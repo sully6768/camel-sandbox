@@ -13,13 +13,22 @@
  */
 package org.apache.camel.component.sjms.jms.queue;
 
-import javax.jms.MessageConsumer;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
+import javax.jms.JMSException;
+import javax.jms.MessageConsumer;
+import javax.jms.Queue;
+import javax.jms.QueueReceiver;
+import javax.jms.QueueSession;
+import javax.jms.Session;
+
+import org.apache.camel.ExchangePattern;
 import org.apache.camel.Processor;
-import org.apache.camel.component.sjms.jms.DefaultJmsMessageListener;
-import org.apache.camel.component.sjms.messagehandlers.DefaultMessageHandler;
-import org.apache.camel.component.sjms.pool.QueueConsumerPool;
-import org.apache.camel.component.sjms.pool.SessionPool;
+import org.apache.camel.component.sjms.MessageHandler;
+import org.apache.camel.component.sjms.messagehandlers.InOnlyMessageHandler;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,95 +40,176 @@ import org.slf4j.LoggerFactory;
 public class QueueListenerConsumer extends QueueConsumer {
 
     protected final transient Logger logger = LoggerFactory.getLogger(getClass());
-    private String messageSelector;
-    private String destinationName;
-    private SessionPool sessions;
-    private QueueConsumerPool consumers;
-    private int maxConsumers = 1;
+    protected final transient ReentrantReadWriteLock lock = new ReentrantReadWriteLock(true);
+    
+    private ConcurrentHashMap<String, MessageHandler> messageHandlers = new ConcurrentHashMap<String, MessageHandler>();
+    private ConcurrentHashMap<String, MessageConsumer> messageConsumers = new ConcurrentHashMap<String, MessageConsumer>();
+    private AtomicBoolean stopped = new AtomicBoolean(false);
     
     public QueueListenerConsumer(QueueEndpoint endpoint, Processor processor) {
         super(endpoint, processor);
-        this.sessions = endpoint.getSessions();
-        this.maxConsumers = endpoint.getConfiguration().getMaxConsumers();
-        setDestinationName(endpoint.getDestinationName());
-    }
-
-    protected QueueEndpoint getQueueEndpoint() {
-        return (QueueEndpoint)this.getEndpoint();
     }
 
     @Override
     protected void doStart() throws Exception {
         super.doStart();
-        consumers = new QueueConsumerPool(maxConsumers, sessions, getDestinationName(), getMessageSelector());
-        consumers.fillPool();
-        for (int i = 0; i < maxConsumers; i++) {
-            MessageConsumer consumer = consumers.borrowObject();
-            DefaultJmsMessageListener listener = createMessageListener();
-            consumer.setMessageListener(listener);
+        if(getSessionPool() != null) {
+            for (int i = 0; i < getMaxConsumers(); i++) {
+                
+                QueueSession queueSession = (QueueSession) getSessionPool().borrowObject();
+                QueueReceiver messageConsumer = createConsumer(queueSession);
+                getSessionPool().returnObject(queueSession);
+                MessageHandler handler = createMessageHandler();
+                
+                lock.writeLock().lock();
+                try {
+                    String id = createId();
+                    getMessageHandlers().put(id, handler);
+                    messageConsumer.setMessageListener(handler);
+                    getMessageConsumers().put(id, messageConsumer);
+                } finally {
+                    lock.writeLock().unlock();
+                }
+            }   
         }
     }
 
     @Override
     protected void doStop() throws Exception {
+        getStopped().set(true);
+        lock.writeLock().lock();
+        try {
+            Set<String> keys = getMessageHandlers().keySet();
+            for (String key : keys) {
+                if (getMessageHandlers().contains(key)) {
+                    MessageHandler messageHandler = getMessageHandlers().remove(key);
+                    messageHandler.close();
+                }
+                if (getMessageConsumers().containsKey(key)) {
+                    MessageConsumer messageConsumer = getMessageConsumers().remove(key);
+                    messageConsumer.close();
+                }
+            }
+        } finally {
+            lock.writeLock().unlock();
+        }
         super.doStop();
-        if (consumers != null)
-            consumers.drainPool();
+    }
+    
+    @Override
+    protected void doResume() throws Exception {
+        super.doResume();
+        getStopped().set(false);
+    }
+    
+    @Override
+    protected void doSuspend() throws Exception {
+        getStopped().set(true);
+        super.doSuspend();
     }
 
     /**
-     * Sets the String value of messageSelector for this instance of SimpleJmsTopicSubscriber.
-     *
-     * @param messageSelector Sets String, default is TODO add default
+     * @param queueSession
+     * @return
+     * @throws JMSException
      */
-    public void setMessageSelector(String messageSelector) {
-        this.messageSelector = messageSelector;
+    protected QueueReceiver createConsumer(QueueSession queueSession)
+            throws JMSException {
+        QueueReceiver messageConsumer;
+        Queue myQueue = queueSession.createQueue(getDestinationName());
+        messageConsumer = queueSession.createReceiver(myQueue);
+        return messageConsumer;
     }
-
-    /**
-     * Gets the String value of messageSelector for this instance of SimpleJmsTopicSubscriber.
-     *
-     * @return the messageSelector
-     */
-    public String getMessageSelector() {
-        return messageSelector;
-    }
-
-    /**
-     * Sets the String value of destinationName for this instance of SimpleJmsConsumer.
-     *
-     * @param destinationName Sets String, default is TODO add default
-     */
-    public void setDestinationName(String destinationName) {
-        this.destinationName = destinationName;
-    }
-
-    /**
-     * Gets the String value of destinationName for this instance of SimpleJmsConsumer.
-     *
-     * @return the destinationName
-     */
-    public String getDestinationName() {
-        return destinationName;
-    }
-
+    
     /**
      * @return
      */
-    protected DefaultJmsMessageListener createMessageListener() {
-        DefaultMessageHandler messageHandler = null;
-        boolean transacted = getQueueEndpoint().getConfiguration().isTransacted();
-        if(transacted) {
-            
-        } else {
-            messageHandler = new DefaultMessageHandler();
+    protected MessageHandler createMessageHandler() {
+        return createMessageHandler(null);
+    }
+    
+    /**
+     * @param session
+     * @return
+     */
+    protected MessageHandler createMessageHandler(Session session) {
+        MessageHandler answer = null;
+        if (getQueueEndpoint().getExchangePattern().equals(ExchangePattern.InOnly) ){
+            InOnlyMessageHandler messageHandler = new InOnlyMessageHandler(getStopped());
+            messageHandler.setSession(session);
             messageHandler.setProcessor(getAsyncProcessor());
             messageHandler.setEndpoint(getQueueEndpoint());
-            messageHandler.setExceptionHandler(getExceptionHandler());
             messageHandler.setAsync(isAsync());
             messageHandler.setTransacted(isTransacted());
+            answer = messageHandler;
         }
-        DefaultJmsMessageListener listener = new DefaultJmsMessageListener(messageHandler);
-        return listener;
+        return answer;
+    }
+
+    /**
+     * Sets the AtomicBoolean value of stopped for this instance of
+     * QueueListenerConsumer.
+     * 
+     * @param stopped
+     *            Sets AtomicBoolean, default is TODO add default
+     */
+    protected void setStopped(boolean flag) {
+        this.stopped.set(flag);
+    }
+
+    /**
+     * Gets the AtomicBoolean value of stopped for this instance of
+     * QueueListenerConsumer.
+     * 
+     * @return the stopped
+     */
+    protected AtomicBoolean getStopped() {
+        return stopped;
+    }
+
+    /**
+     * Sets the ConcurrentHashMap<String,MessageHandler> value of
+     * messageHandlers for this instance of QueueListenerConsumer.
+     * 
+     * @param messageHandlers
+     *            Sets ConcurrentHashMap<String,MessageHandler>, default is TODO
+     *            add default
+     */
+    public void setMessageHandlers(
+            ConcurrentHashMap<String, MessageHandler> messageHandlers) {
+        this.messageHandlers = messageHandlers;
+    }
+
+    /**
+     * Gets the ConcurrentHashMap<String,MessageHandler> value of
+     * messageHandlers for this instance of QueueListenerConsumer.
+     * 
+     * @return the messageHandlers
+     */
+    public ConcurrentHashMap<String, MessageHandler> getMessageHandlers() {
+        return messageHandlers;
+    }
+
+    /**
+     * Sets the ConcurrentHashMap<String,MessageConsumer> value of
+     * messageConsumers for this instance of QueueListenerConsumer.
+     * 
+     * @param messageConsumers
+     *            Sets ConcurrentHashMap<String,MessageConsumer>, default is
+     *            TODO add default
+     */
+    public void setMessageConsumers(
+            ConcurrentHashMap<String, MessageConsumer> messageConsumers) {
+        this.messageConsumers = messageConsumers;
+    }
+
+    /**
+     * Gets the ConcurrentHashMap<String,MessageConsumer> value of
+     * messageConsumers for this instance of QueueListenerConsumer.
+     * 
+     * @return the messageConsumers
+     */
+    public ConcurrentHashMap<String, MessageConsumer> getMessageConsumers() {
+        return messageConsumers;
     }
 }

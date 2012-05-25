@@ -36,7 +36,6 @@ public class AsyncConsumerFalseTest extends CamelTestSupport {
 
         template.sendBody("sjms:queue:start", "Hello Camel");
         template.sendBody("sjms:queue:start", "Hello World");
-//        Thread.sleep(2000);
         assertMockEndpointsSatisfied();
     }
 

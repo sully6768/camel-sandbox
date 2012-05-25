@@ -37,8 +37,8 @@ public class AsyncConsumerInOutTest extends CamelTestSupport {
         // process the 2nd message on the queue
         getMockEndpoint("mock:result").expectedBodiesReceived("Hello World", "Bye Camel");
 
-        template.sendBody("activemq:queue:start", "Hello Camel");
-        template.sendBody("activemq:queue:start", "Hello World");
+        template.sendBody("sjms:queue:start", "Hello Camel");
+        template.sendBody("sjms:queue:start", "Hello World");
 
         assertMockEndpointsSatisfied();
     }
@@ -63,17 +63,17 @@ public class AsyncConsumerInOutTest extends CamelTestSupport {
             @Override
             public void configure() throws Exception {
                 // enable async in only mode on the consumer
-                from("activemq:queue:start?asyncConsumer=true")
+                from("sjms:queue:start?asyncConsumer=true")
                         .choice()
                             .when(body().contains("Camel"))
                             .to("async:camel?delay=2000")
-                            .inOut("activemq:queue:camel")
+                            .inOut("sjms:queue:camel")
                             .to("mock:result")
                         .otherwise()
                             .to("log:other")
                             .to("mock:result");
 
-                from("activemq:queue:camel")
+                from("sjms:queue:camel")
                     .to("log:camel")
                     .transform(constant("Bye Camel"));
             }

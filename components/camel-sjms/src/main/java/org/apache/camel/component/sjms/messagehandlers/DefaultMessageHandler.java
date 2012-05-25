@@ -14,20 +14,20 @@
 package org.apache.camel.component.sjms.messagehandlers;
 
 import static org.apache.camel.component.sjms.SjmsConstants.JMS_MESSAGE_TYPE;
+import static org.apache.camel.util.ObjectHelper.wrapRuntimeCamelException;
 
-import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.jms.BytesMessage;
-import javax.jms.JMSException;
+import javax.jms.Destination;
 import javax.jms.MapMessage;
 import javax.jms.Message;
 import javax.jms.ObjectMessage;
 import javax.jms.Session;
 import javax.jms.TextMessage;
 
-import org.apache.camel.AsyncCallback;
 import org.apache.camel.AsyncProcessor;
 import org.apache.camel.Endpoint;
 import org.apache.camel.Exchange;
@@ -36,7 +36,6 @@ import org.apache.camel.component.sjms.JmsMessageHelper;
 import org.apache.camel.component.sjms.JmsMessageType;
 import org.apache.camel.component.sjms.MessageHandler;
 import org.apache.camel.component.sjms.jms.SessionAcknowledgementType;
-import org.apache.camel.spi.ExceptionHandler;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -50,12 +49,13 @@ public class DefaultMessageHandler implements MessageHandler {
 
     protected final Logger LOGGER = LoggerFactory.getLogger(getClass());
     private Endpoint endpoint;
-    private ExceptionHandler exceptionHandler;
     private AsyncProcessor processor;
     private Session session;
     private boolean transacted = false;
     private SessionAcknowledgementType acknowledgementType = SessionAcknowledgementType.AUTO_ACKNOWLEDGE;
     private boolean async = false;
+    private final AtomicBoolean stopped;
+    private Destination namedReplyToDestination;
     
     /**
      * TODO Add Constructor Javadoc
@@ -63,182 +63,107 @@ public class DefaultMessageHandler implements MessageHandler {
      * @param endpoint
      * @param processor
      */
-    public DefaultMessageHandler() {
+    public DefaultMessageHandler(AtomicBoolean stopped) {
         super();
+        this.stopped = stopped;
     }
+    
+    @Override
+    public void onMessage(Message message) {
+        handleMessage(message);
+    }
+    
+    
 
     /**
      * @param message
      */
+    @Override
     public void handleMessage(Message message) {
-        if(LOGGER.isTraceEnabled()) {
-            LOGGER.trace("Start the message handler");
-            LOGGER.trace("Message received: ");
-        }
-        final Exchange exchange = createExchange();
-
+        RuntimeCamelException rce = null;
         try {
-            processMessage(message, exchange);
-        } catch (Exception e) {
-            exchange.setException(e);
+            final Exchange exchange = createExchange(message);
+
+            try {
+                doHandleMessage(exchange);
+            } catch(Exception e) {
+                if(exchange != null) {
+                    if (exchange.getException() == null) {
+                        exchange.setException(e);
+                    } else {
+                        throw e;
+                    }
+                }
+            }
+        } catch(Exception e) {
+            rce = wrapRuntimeCamelException(e);
         } finally {
-            // log exception if an exception occurred and was not handled
-            if (exchange.getException() != null) {
-                exceptionHandler.handleException(
-                        "Error processing exchange", exchange,
-                        exchange.getException());
+            if(rce != null) {
+                throw rce;
             }
         }
     }
     
-    protected Exchange createExchange() {
-        return endpoint.createExchange();
+    
+    public void doHandleMessage(final Exchange exchange) {}
+    
+    @Override
+    public void close() throws Exception {
+        if(session != null) {
+            session.close();
+        }
     }
-
-    /**
-     * @param message
-     * @param exchange
-     * @throws JMSException
-     */
-    protected Exchange processMessage(Message message, final Exchange exchange)
-            throws Exception {
-        JmsMessageHelper.setJmsMessageHeaders(message, exchange);
-        if(message != null) {
-            // convert to JMS Message of the given type
-            switch (JmsMessageHelper.discoverType(message)) {
-            case Bytes:
-                processBytesMessage(message, exchange);
-                break;
-            case Map:
-                processMapMessage(message, exchange);
-                break;
-            case Object:
-                processObjectMessage(message, exchange);
-                break;
-            case Message:
-                // Do nothing.  Only set the headers for an empty message
-                break;
-            case Text:
-                processTextMessage(message, exchange);
-                break;
-            default:
-                break;
-            }
-        }
-        if(isAsync() || isTransacted()) {
-            processor.process(exchange, new MessageHanderAsyncCallback(exchange));
-        } else {
-            processor.process(exchange);
-        }
-        return exchange;
-    }
-
-    /**
-     * @param message
-     * @param exchange
-     * @throws JMSException
-     */
-    protected Exchange processTextMessage(Message message, final Exchange exchange)
-            throws JMSException {
-        if(LOGGER.isTraceEnabled()) {
-            LOGGER.trace("Decoding the Text Message");
-        }
-        
-        TextMessage textMsg = (TextMessage) message;
-        if(LOGGER.isTraceEnabled()) {
-            LOGGER.trace("Text Message:  " + textMsg);
-        }
-        
-        exchange.getIn().setHeader(JMS_MESSAGE_TYPE, JmsMessageType.Text);
-        exchange.getIn().setBody(textMsg.getText());
-        if(LOGGER.isTraceEnabled()) {
-            LOGGER.trace("Finished decoding the Text Message");
-        }
-        return exchange;
-    }
-
-    /**
-     * @param message
-     * @param exchange
-     * @throws JMSException
-     */
-    protected Exchange processObjectMessage(Message message, final Exchange exchange)
-            throws JMSException {
-        if(LOGGER.isTraceEnabled()) {
-            LOGGER.trace("Decoding the Object Message");
-        }
-        
-        ObjectMessage objMsg = (ObjectMessage) message;
-        if(LOGGER.isTraceEnabled()) {
-            LOGGER.trace("Object Message:  " + objMsg);
-        }
-        
-        exchange.getIn().setHeader(JMS_MESSAGE_TYPE, JmsMessageType.Object);
-        exchange.getIn().setBody(objMsg.getObject());
-        if(LOGGER.isTraceEnabled()) {
-            LOGGER.trace("Finished decoding the Object Message");
-        }
-        return exchange;
-    }
-
-    /**
-     * @param message
-     * @param exchange
-     * @throws JMSException
-     */
+    
     @SuppressWarnings("unchecked")
-    protected Exchange processMapMessage(Message message, final Exchange exchange)
-            throws JMSException {
-        if(LOGGER.isTraceEnabled()) {
-            LOGGER.trace("Decoding Map Message");
-        }
-        HashMap<String, Object> body = new HashMap<String, Object>();
-        MapMessage mapMessage = (MapMessage) message;
-        Enumeration<String> names = mapMessage.getMapNames();
-        while(names.hasMoreElements()) {
-            String key = names.nextElement();
-            Object value = mapMessage.getObject(key);
-            body.put(key, value);
-        }
-
-        if(LOGGER.isTraceEnabled()) {
-            LOGGER.trace("Map Message:  " + body);
-        }
-        
-        exchange.getIn().setHeader(JMS_MESSAGE_TYPE, JmsMessageType.Map);
-        exchange.getIn().setBody(body);
-        if(LOGGER.isTraceEnabled()) {
-            LOGGER.trace("Finished decoding Map Message");
-        }
-        return exchange;
-    }
-
-    /**
-     * @param message
-     * @param exchange
-     * @throws JMSException
-     */
-    protected Exchange processBytesMessage(Message message, final Exchange exchange)
-            throws JMSException {
-        if(LOGGER.isTraceEnabled()) {
-            LOGGER.trace("Decoding the Byte Message");
-        }
-        BytesMessage bytesMessage = (BytesMessage) message;
-
-        if(LOGGER.isDebugEnabled()) {
-            LOGGER.debug("  Received containing " + bytesMessage.getBodyLength() + " bytes");
-        }
-        ArrayList<Byte> bytesList = new ArrayList<Byte>();
-        for(long i = 0; i < bytesMessage.getBodyLength(); ++i) {
-            bytesList.add(bytesMessage.readByte());
-        }
-        bytesList.trimToSize();
-        Byte[] bytes = new Byte[bytesList.size()];
-        bytes = bytesList.toArray(bytes);        
-        exchange.getIn().setHeader(JMS_MESSAGE_TYPE, JmsMessageType.Bytes);
-        exchange.getIn().setBody(bytes);
-        if(LOGGER.isTraceEnabled()) {
-            LOGGER.trace("Finished decoding the Byte Message");
+    protected Exchange createExchange(Message message) {
+        Exchange exchange = endpoint.createExchange();
+        try {
+            JmsMessageHelper.setJmsMessageHeaders(message, exchange);
+            if(message != null) {
+                // convert to JMS Message of the given type
+                switch (JmsMessageHelper.discoverType(message)) {
+                case Bytes:
+                    BytesMessage bytesMessage = (BytesMessage) message;
+                    if (bytesMessage.getBodyLength() > Integer.MAX_VALUE) {
+                        LOGGER.warn("Length of BytesMessage is too long: {}", bytesMessage.getBodyLength());
+                        return null;
+                    }
+                    byte[] result = new byte[(int)bytesMessage.getBodyLength()];
+                    bytesMessage.readBytes(result);       
+                    exchange.getIn().setHeader(JMS_MESSAGE_TYPE, JmsMessageType.Bytes);
+                    exchange.getIn().setBody(result);
+                    break;
+                case Map:
+                    HashMap<String, Object> body = new HashMap<String, Object>();
+                    MapMessage mapMessage = (MapMessage) message;
+                    Enumeration<String> names = mapMessage.getMapNames();
+                    while(names.hasMoreElements()) {
+                        String key = names.nextElement();
+                        Object value = mapMessage.getObject(key);
+                        body.put(key, value);
+                    }
+                    exchange.getIn().setHeader(JMS_MESSAGE_TYPE, JmsMessageType.Map);
+                    exchange.getIn().setBody(body);
+                    break;
+                case Object:
+                    ObjectMessage objMsg = (ObjectMessage) message;
+                    exchange.getIn().setHeader(JMS_MESSAGE_TYPE, JmsMessageType.Object);
+                    exchange.getIn().setBody(objMsg.getObject());
+                    break;
+                case Text:
+                    TextMessage textMsg = (TextMessage) message;
+                    exchange.getIn().setHeader(JMS_MESSAGE_TYPE, JmsMessageType.Text);
+                    exchange.getIn().setBody(textMsg.getText());
+                    break;
+                case Message:
+                default:
+                    // Do nothing.  Only set the headers for an empty message
+                    exchange.getIn().setBody(message);
+                    break;
+                }
+            }
+        } catch (Exception e) {
+            exchange.setException(e);
         }
         return exchange;
     }
@@ -262,65 +187,6 @@ public class DefaultMessageHandler implements MessageHandler {
     public boolean isTransacted() {
         return transacted;
     }
-    
-    protected class MessageHanderAsyncCallback implements AsyncCallback {
-        
-        private Exchange exchange;
-        
-
-        /**
-         * TODO Add Constructor Javadoc
-         *
-         * @param xid
-         * @param exchange
-         */
-        private MessageHanderAsyncCallback(Exchange exchange) {
-            super();
-            this.exchange = exchange;
-        }             
-
-        @Override
-        public void done(boolean sync) {
-            if (exchange.isFailed()) {
-                if(isTransacted()) {
-                    if(getSession() != null) {
-                        try {
-                            getSession().rollback();
-                        } catch (JMSException e) {
-                            throw new RuntimeCamelException(
-                                    "Unable to rollback the transaction. " +
-                                    "Error: " + e.getErrorCode() + " - " + e.getLocalizedMessage(), e);
-                        }
-                    }
-                } else {
-                    if(exceptionHandler != null) {
-                        exceptionHandler.handleException(exchange.getException());
-                    } else {
-                        LOGGER.warn("Exchange failed.  Dropping message.");
-                    }
-                }
-            } else {
-                if(isTransacted()) {
-                    if(getSession() != null) {
-                        try {
-                            getSession().commit();
-                        } catch (JMSException e) {
-                            throw new RuntimeCamelException(
-                                    "Unable to commit the transaction. " +
-                                    "Error: " + e.getErrorCode() + " - " + e.getLocalizedMessage(), e);
-                        }
-                    }
-                } else {
-                    if(exceptionHandler != null) {
-                        exceptionHandler.handleException(exchange.getException());
-                    } else {
-                        LOGGER.warn("Exchange failed.  Dropping message.");
-                    }
-                }
-            }
-        }
-        
-    }
 
     /**
      * Gets the SimpleJmsEndpoint value of endpoint for this instance of DefaultMessageHandler.
@@ -338,24 +204,6 @@ public class DefaultMessageHandler implements MessageHandler {
      */
     public void setEndpoint(Endpoint endpoint) {
         this.endpoint = endpoint;
-    }
-
-    /**
-     * Gets the SjmsExceptionHandler value of exceptionHandler for this instance of DefaultMessageHandler.
-     *
-     * @return the exceptionHandler
-     */
-    public ExceptionHandler getExceptionHandler() {
-        return exceptionHandler;
-    }
-
-    /**
-     * Sets the SjmsExceptionHandler value of exceptionHandler for this instance of DefaultMessageHandler.
-     *
-     * @param exceptionHandler Sets SjmsExceptionHandler, default is TODO add default
-     */
-    public void setExceptionHandler(ExceptionHandler exceptionHandler) {
-        this.exceptionHandler = exceptionHandler;
     }
 
     /**
@@ -429,5 +277,41 @@ public class DefaultMessageHandler implements MessageHandler {
      */
     public boolean isAsync() {
         return async;
+    }
+
+    /**
+     * Test to see if this message handler has been stopped
+     *
+     * @return true if the MessageHandler has been stopped
+     */
+    public boolean isStopped() {
+        return stopped.get();
+    }
+
+    /**
+     * Test to see if this message handler has been started
+     *
+     * @return true if the MessageHandler has been started
+     */
+    public boolean isStarted() {
+        return !isStopped();
+    }
+
+    /**
+     * Sets the Destination value of namedReplyToDestination for this instance of DefaultMessageHandler.
+     *
+     * @param namedReplyToDestination Sets Destination, default is TODO add default
+     */
+    public void setNamedReplyToDestination(Destination namedReplyToDestination) {
+        this.namedReplyToDestination = namedReplyToDestination;
+    }
+
+    /**
+     * Gets the Destination value of namedReplyToDestination for this instance of DefaultMessageHandler.
+     *
+     * @return the namedReplyToDestination
+     */
+    public Destination getNamedReplyToDestination() {
+        return namedReplyToDestination;
     }
 }

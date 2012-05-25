@@ -15,8 +15,13 @@
  */
 package org.apache.camel.component.sjms.jms.queue;
 
+import java.security.SecureRandom;
+import java.util.UUID;
+
 import org.apache.camel.Endpoint;
 import org.apache.camel.Processor;
+import org.apache.camel.component.sjms.pool.ConnectionPool;
+import org.apache.camel.component.sjms.pool.SessionPool;
 import org.apache.camel.impl.DefaultConsumer;
 
 /**
@@ -24,9 +29,6 @@ import org.apache.camel.impl.DefaultConsumer;
  *
  */
 public abstract class QueueConsumer extends DefaultConsumer {
-
-    private boolean async = false;
-    private boolean transacted = false;
 
     /**
      * TODO Add Constructor Javadoc
@@ -38,40 +40,72 @@ public abstract class QueueConsumer extends DefaultConsumer {
         super(endpoint, processor);
     }
 
-    /**
-     * Sets the boolean value of async for this instance of QueueListenerConsumer.
-     *
-     * @param async Sets boolean, default is TODO add default
-     */
-    public void setAsync(boolean async) {
-        this.async = async;
+    protected QueueEndpoint getQueueEndpoint() {
+        return (QueueEndpoint)this.getEndpoint();
+    }
+    
+    protected ConnectionPool getConnectionPool() {
+        return getQueueEndpoint().getConnections();
+    }
+    
+    protected SessionPool getSessionPool() {
+        return getQueueEndpoint().getSessions();
     }
 
     /**
-     * Gets the boolean value of async for this instance of QueueListenerConsumer.
-     *
-     * @return the async
-     */
-    public boolean isAsync() {
-        return async;
-    }
-
-    /**
-     * Sets the boolean value of transacted for this instance of QueueConsumer.
-     *
-     * @param transacted Sets boolean, default is TODO add default
-     */
-    public void setTransacted(boolean transacted) {
-        this.transacted = transacted;
-    }
-
-    /**
-     * Gets the boolean value of transacted for this instance of QueueConsumer.
+     * Gets the boolean value of transacted for this instance of QueueProducer.
      *
      * @return the transacted
      */
     public boolean isTransacted() {
-        return transacted;
+        return getQueueEndpoint().isTransacted();
+    }
+
+    /**
+     * Gets the boolean value of async for this instance of QueueProducer.
+     *
+     * @return the async
+     */
+    public boolean isAsync() {
+        return getQueueEndpoint().isAsyncConsumer();
+    }
+
+    /**
+     * Gets the String value of replyTo for this instance of QueueProducer.
+     *
+     * @return the replyTo
+     */
+    public String getReplyTo() {
+        return getQueueEndpoint().getNamedReplyTo();
+    }
+
+    /**
+     * Gets the String value of destinationName for this instance of QueueProducer.
+     *
+     * @return the destinationName
+     */
+    public String getDestinationName() {
+        return getQueueEndpoint().getDestinationName();
+    }
+
+    /**
+     * Gets the int value of maxProducers for this instance of QueueProducer.
+     *
+     * @return the maxProducers
+     */
+    public int getMaxConsumers() {
+        return getQueueEndpoint().getMaxConsumers();
+    }
+
+    /**
+     * @return
+     */
+    protected String createId() {
+        String answer = null;
+        SecureRandom ng = new SecureRandom();
+        UUID uuid = new UUID(ng.nextLong(), ng.nextLong());
+        answer = uuid.toString();
+        return answer;
     }
     
 }

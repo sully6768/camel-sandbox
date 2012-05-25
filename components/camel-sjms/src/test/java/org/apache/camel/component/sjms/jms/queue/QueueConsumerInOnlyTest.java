@@ -1,4 +1,4 @@
-/**
+/*
  * Licensed to the Apache Software Foundation (ASF) under one or more
  * contributor license agreements.  See the NOTICE file distributed with
  * this work for additional information regarding copyright ownership.
@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.camel.component.sjms.jms.queue.async;
+package org.apache.camel.component.sjms.jms.queue;
 
 import org.apache.activemq.ActiveMQConnectionFactory;
 import org.apache.camel.CamelContext;
@@ -24,24 +24,36 @@ import org.apache.camel.test.junit4.CamelTestSupport;
 
 import org.junit.Test;
 
-/**
- *
- */
-public class AsyncConsumerInOutTwoTest extends CamelTestSupport {
+public class QueueConsumerInOnlyTest extends CamelTestSupport {
+    
+    public QueueConsumerInOnlyTest() {
+    	enableJMX();
+	}
+    
+    @Override
+    protected boolean useJmx() {
+    	return true;
+    }
 
     @Test
-    public void testAsyncJmsConsumer() throws Exception {
-        String out = template.requestBody("sjms:queue:start", "Hello World", String.class);
-        assertEquals("Bye World", out);
+    public void testRepeatedHelloWorld() throws Exception {
+        getMockEndpoint("mock:test.done").expectedBodiesReceived("Hello World");
+
+        template.sendBody("sjms:queue:test.queue", "World");
+
+        assertMockEndpointsSatisfied();
+    }
+    
+    @Override
+    protected void doPreSetup() throws Exception {
+    	super.doPreSetup();
     }
 
     protected CamelContext createCamelContext() throws Exception {
         CamelContext camelContext = super.createCamelContext();
 
-        camelContext.addComponent("async", new MyAsyncComponent());
-
         ActiveMQConnectionFactory connectionFactory = new ActiveMQConnectionFactory(
-                "vm://broker?broker.persistent=false");
+                "vm://broker?broker.persistent=false&broker.useJmx=false");
         SjmsComponent component = new SjmsComponent();
         component.setConnectionFactory(connectionFactory);
         camelContext.addComponent("sjms", component);
@@ -52,12 +64,12 @@ public class AsyncConsumerInOutTwoTest extends CamelTestSupport {
     @Override
     protected RouteBuilder createRouteBuilder() throws Exception {
         return new RouteBuilder() {
-            @Override
-            public void configure() throws Exception {
-                // enable async in only mode on the consumer
-                from("sjms:queue:start?asyncConsumer=true")
-                    .to("async:camel?delay=2000")
-                    .transform(constant("Bye World"));
+            public void configure() {
+
+                from("sjms:queue:test.queue")
+                    .transform(body().prepend("Hello "))
+                    .to("log:test?showAll=true", "mock:test.done");
+
             }
         };
     }

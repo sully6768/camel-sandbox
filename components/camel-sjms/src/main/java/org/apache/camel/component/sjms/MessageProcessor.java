@@ -11,21 +11,18 @@
  *    See the License for the specific language governing permissions and
  *    limitations under the License.
  */
-package org.apache.camel.component.sjms.jms.queue;
+package org.apache.camel.component.sjms;
 
-import org.apache.camel.Endpoint;
-import org.apache.camel.Processor;
+import org.apache.camel.AsyncCallback;
+import org.apache.camel.Exchange;
 
 /**
- * TODO Add Class documentation for QueueListenerConsumer
+ * TODO Add Class documentation for MessageProcessor
  *
+ * @author sully6768
  */
-public class TransactedQueueConsumer extends QueueConsumer {
+public interface MessageProcessor {
 
-    public TransactedQueueConsumer(Endpoint endpoint, Processor processor) {
-        super(endpoint, processor);
-    }
+    public boolean process(Exchange exchange, AsyncCallback callback);
     
-    
-
 }

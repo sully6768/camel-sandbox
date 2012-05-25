@@ -14,12 +14,14 @@
 package org.apache.camel.component.sjms;
 
 import javax.jms.Message;
+import javax.jms.MessageListener;
 
 /**
  * TODO Add Class documentation for MessageHandler
  *
  * @author sully6768
  */
-public interface MessageHandler {
+public interface MessageHandler extends MessageListener{
     public void handleMessage(Message message);
+    public void close() throws Exception;
 }

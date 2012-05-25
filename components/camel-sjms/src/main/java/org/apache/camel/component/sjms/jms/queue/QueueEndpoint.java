@@ -14,9 +14,11 @@
 package org.apache.camel.component.sjms.jms.queue;
 
 import org.apache.camel.Consumer;
+import org.apache.camel.ExchangePattern;
 import org.apache.camel.MultipleConsumersSupport;
 import org.apache.camel.Processor;
 import org.apache.camel.Producer;
+import org.apache.camel.RuntimeCamelException;
 import org.apache.camel.component.sjms.JmsKeyFormatStrategy;
 import org.apache.camel.component.sjms.MessageHandler;
 import org.apache.camel.component.sjms.SjmsComponent;
@@ -31,100 +33,93 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * TODO Add Class documentation for QueueListenerConsumer
+ * TODO Add Class documentation for QueueEndpoint
  *
  */
-public class QueueEndpoint extends DefaultEndpoint implements
-MultipleConsumersSupport{
+public class QueueEndpoint extends DefaultEndpoint implements MultipleConsumersSupport {
     protected final transient Logger logger = LoggerFactory
             .getLogger(getClass());
 
     private SjmsComponentConfiguration configuration;
-
     private ConnectionPool connections;
-
     private SessionPool sessions;
-
     private MessageHandler messageHandler;
-    
     private boolean asyncConsumer = false;
+    private boolean asyncProducer = false;
     private boolean transacted = false;
-
-    /*
-     * Cache All Consumers
-     * 
-     * If the endpoint is a consumer
-     *   If the endpoint is non-transacted
-     *     create a QueueListenerConsumer
-     *   If the endpoint is local transaction
-     *     create a QueueListenerConsumer w/ Dedicated Session
-     *   If the endpoint is an XA Transaction
-     *     create a QueuePollingConsumer w/ Dedicated Session & Transaction Manager
-     *     Pass the XID along the route
-     *     Consumers close the route and publis the close event to the seda queue listener to close the producer
-     *   If the endpoint is Request/Reply
-     *     TBD
-     */
-    
-    /*
-     * Cache all producers
-     * 
-     * If the endpoint is a producer
-     *   If the endpoint is non-transacted
-     *     create a QueueProducer
-     *   If the endpoint is local transaction
-     *     create a QueueProducer w/ Dedicated Session
-     *   If the endpoint is an XA Transaction
-     *     create a QueueProducer w/ Dedicated Session and the Transaction Manager
-     *     Create a XID
-     *     If reference endpoint exists
-     *     if the endpoint is a new XA
-     *       Start new XA Process
-     *       Create a XID
-     *       Create a XID Seda Queue Listener
-     *       
-     *       
-     */
-
+    private String namedReplyTo;
 
     public QueueEndpoint() {
+        setExchangePattern(ExchangePattern.InOnly);
     }
 
     public QueueEndpoint(String uri, SjmsComponent component) {
         super(uri, component);
-        this.setConfiguration(component.getConfiguration());
-        setConnections(new ConnectionPool(getConfiguration()
-                .getMaxConnections(), getConfiguration().getConnectionFactory()));
-        SessionPool sessions = new SessionPool(getConfiguration()
-                .getMaxSessions(), getConnections());
-        sessions.setAcknowledgeMode(SessionAcknowledgementType
-                .valueOf(getConfiguration().getAcknowledgementMode()));
-        sessions.setTransacted(getConfiguration().isTransacted());
-        setSessions(sessions);
+        setConfiguration(component.getConfiguration());
+        setExchangePattern(ExchangePattern.InOnly);
+    }
+    
+    @Override
+    protected void doStart() throws Exception {
+        super.doStart();
+        
+        // Start with some paramater validation and overridding
+        // First check for 
+        
+        // We always use a connection pool, even for a pool of 1
+        connections = new ConnectionPool(getConfiguration()
+                .getMaxConnections(), getConfiguration().getConnectionFactory());
+        connections.fillPool();
+        
+        // We only create a session pool when we are not transacted.
+        // Transacted listeners or producers need to be paired with the
+        // Session that created them.
+        if( ! isTransacted()) {
+            sessions = new SessionPool(getConfiguration()
+                    .getMaxSessions(), getConnections());
+            sessions.setAcknowledgeMode(SessionAcknowledgementType
+                    .valueOf(getConfiguration().getAcknowledgementMode()));
+            getSessions().fillPool();   
+        }
+    }
+    
+    @Override
+    protected void doStop() throws Exception {
+        if (getSessions() != null) {
+            getSessions().drainPool();
+        }
+        getConnections().drainPool();
+        super.doStop();
     }
 
     @Override
     public Producer createProducer() throws Exception {
         QueueProducer answer = new QueueProducer(this);
+        if(isTransacted()) {
+            answer = new TransactedQueueProducer(this);
+        } else {
+            answer = new QueueProducer(this);
+        }
         return answer;
     }
 
     @Override
     public Consumer createConsumer(Processor processor) throws Exception {
         QueueConsumer answer = null;
-        if(getConfiguration().isTransacted()) {
-            
+        if(isTransacted()) {
+            answer = new TransactedQueueListenerConsumer(this, processor);
         } else {
-            answer = new QueueListenerConsumer(this, processor);  
+            answer = new QueueListenerConsumer(this, processor);
         }
-        if(getConfiguration().getMaxConsumers() > 1) {
-            setAsyncConsumer(true);
-        }
-        answer.setAsync(isAsyncConsumer());
-        answer.setTransacted(isTransacted());
         return answer;
     }
-
+    
+    @Override
+    public boolean isMultipleConsumersSupported() {
+        return true;
+    }
+    
+    @Override
     public boolean isSingleton() {
         return true;
     }
@@ -159,39 +154,6 @@ MultipleConsumersSupport{
         return configuration;
     }
 
-    /*
-     * (non-Javadoc)
-     * 
-     * @see
-     * org.apache.camel.MultipleConsumersSupport#isMultipleConsumersSupported()
-     */
-    @Override
-    public boolean isMultipleConsumersSupported() {
-        return true;
-    }
-
-    /**
-     * 
-     * @see org.apache.camel.impl.DefaultEndpoint#doStart()
-     */
-    @Override
-    protected void doStart() throws Exception {
-        super.doStart();
-        getConnections().fillPool();
-        getSessions().fillPool();
-    }
-
-    /**
-     * 
-     * @see org.apache.camel.impl.DefaultEndpoint#doStop()
-     */
-    @Override
-    protected void doStop() throws Exception {
-        super.doStop();
-        getSessions().drainPool();
-        getConnections().drainPool();
-    }
-
     /**
      * Sets the value of connections for this instance of
      * SimpleJmsQueueEndpoint.
@@ -214,16 +176,6 @@ MultipleConsumersSupport{
     }
 
     /**
-     * Sets the value of sessions for this instance of SimpleJmsQueueEndpoint.
-     * 
-     * @param sessions
-     *            the sessions to set
-     */
-    public void setSessions(SessionPool sessions) {
-        this.sessions = sessions;
-    }
-
-    /**
      * Returns the value of sessions for this instance of
      * SimpleJmsQueueEndpoint.
      * 
@@ -236,10 +188,15 @@ MultipleConsumersSupport{
     /**
      * @return
      */
-    protected int getMaxProducers() {
-        int maxProducers = ((SjmsComponent) this.getComponent())
-                .getConfiguration().getMaxProducers();
-        return maxProducers;
+    public int getMaxProducers() {
+        return getConfiguration().getMaxProducers();
+    }
+
+    /**
+     * @return
+     */
+    public int getMaxConsumers() {
+        return getConfiguration().getMaxConsumers();
     }
 
     /**
@@ -317,5 +274,69 @@ MultipleConsumersSupport{
      */
     public boolean isTransacted() {
         return transacted;
+    }
+
+    /**
+     * Sets the boolean value of asyncProducer for this instance of QueueEndpoint.
+     *
+     * @param asyncProducer Sets boolean, default is TODO add default
+     */
+    public void setAsyncProducer(boolean asyncProducer) {
+        this.asyncProducer = asyncProducer;
+    }
+
+    /**
+     * Gets the boolean value of asyncProducer for this instance of QueueEndpoint.
+     *
+     * @return the asyncProducer
+     */
+    public boolean isAsyncProducer() {
+        return asyncProducer;
+    }
+
+    /**
+     * Sets the String value of namedReplyTo for this instance of QueueEndpoint.
+     *
+     * @param namedReplyTo Sets the value of the namedReplyTo attribute
+     */
+    public void setNamedReplyTo(String namedReplyTo) {
+        this.namedReplyTo = namedReplyTo;
+        this.setExchangePattern(ExchangePattern.InOut);
+    }
+
+    /**
+     * Gets the String value of namedReplyTo for this instance of QueueEndpoint.
+     *
+     * @return the namedReplyTo
+     */
+    public String getNamedReplyTo() {
+        return namedReplyTo;
+    }
+
+    /**
+     * Sets the String value of messageExchangePattern for this instance of QueueEndpoint.
+     *
+     * @param messageExchangePattern Sets String, default is TODO add default
+     */
+    public void setMessageExchangePattern(ExchangePattern messageExchangePattern) {
+        if(messageExchangePattern.equals(ExchangePattern.InOut)) {
+            this.setExchangePattern(ExchangePattern.InOut);
+        } else if(messageExchangePattern.equals(ExchangePattern.RobustInOnly)) {
+            this.setExchangePattern(ExchangePattern.RobustInOnly);
+        } else if(messageExchangePattern.equals(ExchangePattern.InOnly)) {
+            this.setExchangePattern(ExchangePattern.InOnly);
+        } else {
+            throw new RuntimeCamelException("The MEP " + messageExchangePattern + " is not supported by the Simple JMS Endpoint");
+        }
+        this.setExchangePattern(messageExchangePattern);
+    }
+
+    /**
+     * Gets the String value of messageExchangePattern for this instance of QueueEndpoint.
+     *
+     * @return the messageExchangePattern
+     */
+    public ExchangePattern getMessageExchangePattern() {
+        return getExchangePattern();
     }
 }

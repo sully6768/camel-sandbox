@@ -93,7 +93,7 @@ public class SessionPool extends ObjectPool<Session> {
                     throw jmsException;
                 }
             } else if (isLocalTransaction()) {
-                session = connection.createSession(transacted, acknowledgeMode.intValue());
+                session = connection.createSession(transacted, Session.AUTO_ACKNOWLEDGE);
             } else {
                 switch (acknowledgeMode) {
                 case CLIENT_ACKNOWLEDGE:

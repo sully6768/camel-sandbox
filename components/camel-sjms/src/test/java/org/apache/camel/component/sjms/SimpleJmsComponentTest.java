@@ -47,7 +47,7 @@ public class SimpleJmsComponentTest extends CamelTestSupport {
             public void configure() {
 
                 ActiveMQConnectionFactory connectionFactory = new ActiveMQConnectionFactory(
-                        "vm://broker?broker.persistent=false");
+                        "vm://broker?broker.persistent=false&broker.useJmx=true");
                 SjmsComponent component = new SjmsComponent();
                 component.setConnectionFactory(connectionFactory);
                 getContext().addComponent("sjms", component);

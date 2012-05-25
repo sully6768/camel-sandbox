@@ -20,7 +20,9 @@ import java.util.Map;
 
 import javax.jms.ConnectionFactory;
 
+import org.apache.camel.CamelException;
 import org.apache.camel.Endpoint;
+import org.apache.camel.ExchangePattern;
 import org.apache.camel.component.sjms.jms.queue.QueueEndpoint;
 import org.apache.camel.impl.DefaultComponent;
 import org.apache.camel.spi.HeaderFilterStrategy;
@@ -37,14 +39,33 @@ public class SjmsComponent extends DefaultComponent implements HeaderFilterStrat
 
     protected Endpoint createEndpoint(String uri, String remaining,
             Map<String, Object> parameters) throws Exception {
-        Endpoint endpoint = null;
+        validateMepAndReplyTo(parameters);
+        QueueEndpoint endpoint = null;
         if (uri.indexOf("://queue:") > -1) {
             endpoint = new QueueEndpoint(uri, this);
         } else {
 //            endpoint = new TopicEndpoint(uri, this);
         }
         setProperties(endpoint, parameters);
+        if(endpoint.isTransacted()) {
+            endpoint.setAsyncConsumer(false);
+            endpoint.setAsyncProducer(false);
+        }
         return endpoint;
+    }
+    
+    private void validateMepAndReplyTo(Map<String, Object> parameters) throws Exception {
+        boolean namedReplyToSet = parameters.containsKey("namedReplyTo");
+        boolean mepSet = parameters.containsKey("messageExchangePattern");
+        if (namedReplyToSet && mepSet) {
+            if (! parameters.get("messageExchangePattern").equals(ExchangePattern.InOut.toString())) {
+                String namedReplyTo = (String) parameters.get("namedReplyTo");
+                ExchangePattern mep = ExchangePattern.valueOf((String) parameters.get("messageExchangePattern"));
+                throw new CamelException("Setting parameter namedReplyTo=" 
+                        + namedReplyTo 
+                        + " requires a MEP of type InOut or RobustInOut.  Parameter messageExchangePattern is set to " + mep);
+            }
+        }
     }
 
     @Override

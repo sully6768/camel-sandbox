@@ -296,9 +296,9 @@ public final class JmsMessageHelper {
         Set<String> keys = headers.keySet();
         for (String headerName : keys) {
             Object headerValue = headers.get(headerName);
-            if (headerName.equals("JMSCorrelationID")) {
+            if (headerName.equalsIgnoreCase("JMSCorrelationID")) {
                 jmsMessage.setJMSCorrelationID(ExchangeHelper.convertToType(exchange, String.class, headerValue));
-            } else if (headerName.equals("JMSReplyTo") && headerValue != null) {
+            } else if (headerName.equalsIgnoreCase("JMSReplyTo") && headerValue != null) {
                 if (headerValue instanceof String) {
                     // if the value is a String we must normalize it first
                     headerValue = (String) headerValue;
@@ -309,13 +309,13 @@ public final class JmsMessageHelper {
                     // headerValue);
                     // jmsMessage.setJMSReplyTo(replyTo);
                 }
-            } else if (headerName.equals("JMSType")) {
+            } else if (headerName.equalsIgnoreCase("JMSType")) {
                 jmsMessage.setJMSType(ExchangeHelper.convertToType(exchange, String.class, headerValue));
-            } else if (headerName.equals("JMSPriority")) {
+            } else if (headerName.equalsIgnoreCase("JMSPriority")) {
                 jmsMessage.setJMSPriority(ExchangeHelper.convertToType(exchange, Integer.class, headerValue));
-            } else if (headerName.equals("JMSDeliveryMode")) {
+            } else if (headerName.equalsIgnoreCase("JMSDeliveryMode")) {
                 JmsMessageHelper.setJMSDeliveryMode(exchange, jmsMessage, headerValue);
-            } else if (headerName.equals("JMSExpiration")) {
+            } else if (headerName.equalsIgnoreCase("JMSExpiration")) {
                 jmsMessage.setJMSExpiration(ExchangeHelper.convertToType(exchange, Long.class, headerValue));
             } else {
                 // The following properties are set by the MessageProducer:
@@ -337,10 +337,10 @@ public final class JmsMessageHelper {
                     answer = JmsMessageType.Bytes;
                 } else if (MapMessage.class.isInstance(value)) {
                     answer = JmsMessageType.Map;
-                } else if (ObjectMessage.class.isInstance(value)) {
-                    answer = JmsMessageType.Object;
                 } else if (TextMessage.class.isInstance(value)) {
                     answer = JmsMessageType.Text;
+                } else if (ObjectMessage.class.isInstance(value)) {
+                    answer = JmsMessageType.Object;
                 } else {
                     answer = JmsMessageType.Message;
                 }
@@ -358,7 +358,7 @@ public final class JmsMessageHelper {
                     answer = JmsMessageType.Bytes;
                 } else if (Collection.class.isInstance(value)) {
                     answer = JmsMessageType.Map;
-                } else if (TextMessage.class.isInstance(value)) {
+                } else if (String.class.isInstance(value)) {
                     answer = JmsMessageType.Text;
                 } else if (Serializable.class.isInstance(value)) {
                     answer = JmsMessageType.Object;

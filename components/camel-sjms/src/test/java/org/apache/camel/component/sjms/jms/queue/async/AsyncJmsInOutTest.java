@@ -42,9 +42,23 @@ public class AsyncJmsInOutTest extends CamelTestSupport {
 
         StopWatch watch = new StopWatch();
 
+//        ExecutorService executor = Executors.newFixedThreadPool(10);
+
         for (int i = 0; i < 100; i++) {
-            template.sendBody("seda:start", "" + i);
+//            final int tempI = i;
+//            Runnable worker = new Runnable() {
+//                
+//                @Override
+//                public void run() {
+                    template.sendBody("seda:start", "" + i);                  
+//                }
+//            };
+//            executor.execute(worker);
         }
+//        executor.shutdown();
+//        while (!executor.isTerminated()) {
+//
+//        }
 
         // just in case we run on slow boxes
         assertMockEndpointsSatisfied(20, TimeUnit.SECONDS);
@@ -59,10 +73,6 @@ public class AsyncJmsInOutTest extends CamelTestSupport {
                 "vm://broker?broker.persistent=false");
         SjmsComponentConfiguration config = new SjmsComponentConfiguration();
         config.setConnectionFactory(connectionFactory);
-        config.setMaxConnections(2);
-        config.setMaxSessions(20);
-        config.setMaxProducers(10);
-        config.setMaxConsumers(10);
         SjmsComponent component = new SjmsComponent();
         component.setConfiguration(config);
         camelContext.addComponent("sjms", component);
@@ -85,10 +95,10 @@ public class AsyncJmsInOutTest extends CamelTestSupport {
                 from("seda:start")
                     // we can only send at fastest the 100 msg in 5 sec due the delay
                     .delay(50)
-                    .inOut("sjms:queue:bar")
+                    .inOut("sjms:queue:bar?transacted=true")
                     .to("mock:result");
 
-                from("sjms:queue:bar?asyncConsumer=true")
+                from("sjms:queue:bar?asyncConsumer=true&transacted=true")
                     .log("Using ${threadName} to process ${body}")
                     // we can only process at fastest the 100 msg in 5 sec due the delay
                     .delay(50)

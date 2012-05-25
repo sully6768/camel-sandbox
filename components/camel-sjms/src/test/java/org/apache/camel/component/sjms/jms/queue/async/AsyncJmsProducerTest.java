@@ -33,6 +33,8 @@ public class AsyncJmsProducerTest extends CamelTestSupport {
 
     private static String beforeThreadName;
     private static String afterThreadName;
+    private static String sedaThreadName;
+    private static String route = "";
 
     @Test
     public void testAsyncEndpoint() throws Exception {
@@ -40,19 +42,24 @@ public class AsyncJmsProducerTest extends CamelTestSupport {
         getMockEndpoint("mock:after").expectedBodiesReceived("Bye Camel");
         getMockEndpoint("mock:result").expectedBodiesReceived("Bye Camel");
 
-        String reply = template.requestBody("direct:start", "Hello Camel", String.class);
-        assertEquals("Bye Camel", reply);
+        template.sendBody("direct:start", "Hello Camel");
+        // we should run before the async processor that sets B
+        route += "A";
 
         assertMockEndpointsSatisfied();
 
         assertFalse("Should use different threads", beforeThreadName.equalsIgnoreCase(afterThreadName));
+        assertFalse("Should use different threads", beforeThreadName.equalsIgnoreCase(sedaThreadName));
+        assertFalse("Should use different threads", afterThreadName.equalsIgnoreCase(sedaThreadName));
+
+        assertEquals("AB", route);
     }
 
     protected CamelContext createCamelContext() throws Exception {
         CamelContext camelContext = super.createCamelContext();
 
         ActiveMQConnectionFactory connectionFactory = new ActiveMQConnectionFactory(
-                "vm://broker?broker.persistent=false");
+                "vm://broker?broker.persistent=false&broker.useJmx=false");
         SjmsComponent component = new SjmsComponent();
         component.setConnectionFactory(connectionFactory);
         camelContext.addComponent("sjms", component);
@@ -65,27 +72,64 @@ public class AsyncJmsProducerTest extends CamelTestSupport {
         return new RouteBuilder() {
             @Override
             public void configure() throws Exception {
+                context.addComponent("async", new MyAsyncComponent());
+
                 from("direct:start")
                         .to("mock:before")
-                        .to("log:before")
                         .process(new Processor() {
                             public void process(Exchange exchange) throws Exception {
                                 beforeThreadName = Thread.currentThread().getName();
                             }
                         })
-                        .to("sjms:queue:foo")
+                        .to("async:bye:camel")
                         .process(new Processor() {
                             public void process(Exchange exchange) throws Exception {
                                 afterThreadName = Thread.currentThread().getName();
                             }
                         })
-                        .to("log:after")
-                        .to("mock:after")
-                        .to("mock:result");
+                        .to("sjms:queue:foo?asyncProducer=false");
 
                 from("sjms:queue:foo")
-                    .transform(constant("Bye Camel"));
+                        .to("mock:after")
+                        .to("log:after")
+                        .delay(1000)
+                        .process(new Processor() {
+                            public void process(Exchange exchange) throws Exception {
+                                route += "B";
+                                sedaThreadName = Thread.currentThread().getName();
+                            }
+                        })
+                        .to("mock:result");
             }
         };
     }
+//
+//    @Override
+//    protected RouteBuilder createRouteBuilder() throws Exception {
+//        return new RouteBuilder() {
+//            @Override
+//            public void configure() throws Exception {
+//                from("direct:start")
+//                        .to("mock:before")
+//                        .to("log:before")
+//                        .process(new Processor() {
+//                            public void process(Exchange exchange) throws Exception {
+//                                beforeThreadName = Thread.currentThread().getName();
+//                            }
+//                        })
+//                        .to("sjms:queue:foo?asyncProducer=true")
+//                        .process(new Processor() {
+//                            public void process(Exchange exchange) throws Exception {
+//                                afterThreadName = Thread.currentThread().getName();
+//                            }
+//                        })
+//                        .to("log:after")
+//                        .to("mock:after")
+//                        .to("mock:result");
+//
+//                from("sjms:queue:foo")
+//                    .transform(constant("Bye Camel"));
+//            }
+//        };
+//    }
 }
