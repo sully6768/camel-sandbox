@@ -111,6 +111,14 @@ public class DefaultMessageHandler implements MessageHandler {
     public void close() throws Exception {
         if(session != null) {
             session.close();
+            if (session.getTransacted()) {
+                try {
+                    session.rollback();
+                } catch (Exception e) {
+                    // Do nothing.  Just make sure we are cleaned up
+                }
+            }
+            session = null;
         }
     }
     
