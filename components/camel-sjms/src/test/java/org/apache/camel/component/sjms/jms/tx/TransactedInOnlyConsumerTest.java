@@ -21,6 +21,7 @@ import org.apache.camel.CamelContext;
 import org.apache.camel.Exchange;
 import org.apache.camel.Processor;
 import org.apache.camel.RuntimeCamelException;
+import org.apache.camel.builder.DefaultErrorHandlerBuilder;
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.component.sjms.SjmsComponent;
 import org.apache.camel.component.sjms.jms.JmsMessageHeaderType;
@@ -83,7 +84,8 @@ public class TransactedInOnlyConsumerTest extends CamelTestSupport {
     protected RouteBuilder createRouteBuilder() throws Exception {
         return new RouteBuilder() {
             public void configure() {
-                
+//                DefaultErrorHandlerBuilder dehb = new DefaultErrorHandlerBuilder();
+//                dehb.createErrorHandler(null, null)
                 from("sjms:queue:test1.queue?transacted=true")
                     .to("log:test1.before")
                     .to("mock:test1.mock.before")
