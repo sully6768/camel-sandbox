@@ -41,15 +41,11 @@ import org.apache.camel.component.sjms.pool.ObjectPool;
 import org.apache.camel.component.sjms.pool.SessionPool;
 import org.apache.camel.impl.DefaultAsyncProducer;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
 /**
  * TODO Add Class documentation for QueueConsumer
  *
  */
 public class QueueProducer extends DefaultAsyncProducer {
-    protected final transient Logger logger = LoggerFactory.getLogger(getClass());
     private final ExecutorService executor;
 
     private QueueProducerPool producers;
@@ -84,7 +80,7 @@ public class QueueProducer extends DefaultAsyncProducer {
     
     public QueueProducer(QueueEndpoint endpoint) {
         super(endpoint);
-        this.executor = endpoint.getCamelContext().getExecutorServiceManager().newDefaultThreadPool(this, "MyProducer");
+        this.executor = endpoint.getCamelContext().getExecutorServiceManager().newDefaultThreadPool(this, "QProducer");
     }
 
     @Override
