@@ -1,6 +1,7 @@
-package org.apache.camel.component.sjms;
+package org.apache.camel.component.sjms.support;
 
 import javax.transaction.TransactionManager;
+
 
 import com.atomikos.icatch.jta.UserTransactionManager;
 

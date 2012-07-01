@@ -14,14 +14,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.camel.component.sjms.jms.tx;
+package org.apache.camel.component.sjms.consumer;
 
 import org.apache.activemq.ActiveMQConnectionFactory;
 import org.apache.camel.CamelContext;
 import org.apache.camel.Exchange;
 import org.apache.camel.Processor;
 import org.apache.camel.RuntimeCamelException;
-import org.apache.camel.builder.DefaultErrorHandlerBuilder;
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.component.sjms.SjmsComponent;
 import org.apache.camel.component.sjms.jms.JmsMessageHeaderType;
@@ -84,8 +83,6 @@ public class TransactedInOnlyConsumerTest extends CamelTestSupport {
     protected RouteBuilder createRouteBuilder() throws Exception {
         return new RouteBuilder() {
             public void configure() {
-//                DefaultErrorHandlerBuilder dehb = new DefaultErrorHandlerBuilder();
-//                dehb.createErrorHandler(null, null)
                 from("sjms:queue:test1.queue?transacted=true")
                     .to("log:test1.before")
                     .to("mock:test1.mock.before")
@@ -104,21 +101,21 @@ public class TransactedInOnlyConsumerTest extends CamelTestSupport {
                     .to("log:test1.after?showAll=true", "mock:test1.mock.after");
                 
                 from("sjms:queue:test2.queue?transacted=true")
-                .to("log:test2.before")
-                .to("mock:test2.mock.before")
-                .process(new Processor() {
-                    public void process(Exchange exchange) throws Exception {
-                        LOGGER.info("Begin processing Exchange ID: {}", exchange.getExchangeId());
-                        if (! exchange.getIn().getHeader(JmsMessageHeaderType.JMSRedelivered.toString(), String.class).equalsIgnoreCase("true")) {
-                            LOGGER.info("Exchange does not have a retry message.  Throw the exception to verify we handle the retry.");
-                            throw new RuntimeCamelException("Creating Failure");
-                        } else {
-                            LOGGER.info("Exchange has retry header.  Continue processing the message.");
+                    .to("log:test2.before")
+                    .to("mock:test2.mock.before")
+                    .process(new Processor() {
+                        public void process(Exchange exchange) throws Exception {
+                            LOGGER.info("Begin processing Exchange ID: {}", exchange.getExchangeId());
+                            if (! exchange.getIn().getHeader(JmsMessageHeaderType.JMSRedelivered.toString(), String.class).equalsIgnoreCase("true")) {
+                                LOGGER.info("Exchange does not have a retry message.  Throw the exception to verify we handle the retry.");
+                                throw new RuntimeCamelException("Creating Failure");
+                            } else {
+                                LOGGER.info("Exchange has retry header.  Continue processing the message.");
+                            }
                         }
-                    }
-                })
-                .transform(body().prepend("Hello "))
-                .to("log:test2.after?showAll=true", "mock:test2.mock.after");
+                    })
+                    .transform(body().prepend("Hello "))
+                    .to("log:test2.after?showAll=true", "mock:test2.mock.after");
             }
         };
     }

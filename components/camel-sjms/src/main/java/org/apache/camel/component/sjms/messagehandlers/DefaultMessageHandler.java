@@ -34,8 +34,9 @@ import org.apache.camel.Exchange;
 import org.apache.camel.RuntimeCamelException;
 import org.apache.camel.component.sjms.JmsMessageHelper;
 import org.apache.camel.component.sjms.JmsMessageType;
-import org.apache.camel.component.sjms.MessageHandler;
+import org.apache.camel.component.sjms.SjmsMessageConsumer;
 import org.apache.camel.component.sjms.jms.SessionAcknowledgementType;
+import org.apache.camel.spi.Synchronization;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,7 +46,7 @@ import org.slf4j.LoggerFactory;
  *
  * @author sully6768
  */
-public class DefaultMessageHandler implements MessageHandler {
+public class DefaultMessageHandler implements SjmsMessageConsumer {
 
     protected final Logger LOGGER = LoggerFactory.getLogger(getClass());
     private Endpoint endpoint;
@@ -107,24 +108,23 @@ public class DefaultMessageHandler implements MessageHandler {
     
     public void doHandleMessage(final Exchange exchange) {}
     
-    @Override
-    public void close() throws Exception {
-        if(session != null) {
-            session.close();
-            if (session.getTransacted()) {
-                try {
-                    session.rollback();
-                } catch (Exception e) {
-                    // Do nothing.  Just make sure we are cleaned up
-                }
-            }
-            session = null;
-        }
-    }
     
     @SuppressWarnings("unchecked")
     protected Exchange createExchange(Message message) {
         Exchange exchange = endpoint.createExchange();
+        exchange.addOnCompletion(new Synchronization() {
+            
+            @Override
+            public void onFailure(Exchange exchange) {
+                LOGGER.info("ONFAILURE: {}", exchange.toString());
+                
+            }
+            
+            @Override
+            public void onComplete(Exchange exchange) {
+                LOGGER.info("ONCOMPLETION: {}", exchange.toString());
+            }
+        });
         try {
             JmsMessageHelper.setJmsMessageHeaders(message, exchange);
             if(message != null) {
@@ -290,7 +290,7 @@ public class DefaultMessageHandler implements MessageHandler {
     /**
      * Test to see if this message handler has been stopped
      *
-     * @return true if the MessageHandler has been stopped
+     * @return true if the SjmsMessageConsumer has been stopped
      */
     public boolean isStopped() {
         return stopped.get();
@@ -299,7 +299,7 @@ public class DefaultMessageHandler implements MessageHandler {
     /**
      * Test to see if this message handler has been started
      *
-     * @return true if the MessageHandler has been started
+     * @return true if the SjmsMessageConsumer has been started
      */
     public boolean isStarted() {
         return !isStopped();

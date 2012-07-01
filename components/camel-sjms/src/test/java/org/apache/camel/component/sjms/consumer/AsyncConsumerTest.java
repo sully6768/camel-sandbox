@@ -14,12 +14,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.camel.component.sjms.jms.queue.async;
+package org.apache.camel.component.sjms.consumer;
 
 import org.apache.activemq.ActiveMQConnectionFactory;
 import org.apache.camel.CamelContext;
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.component.sjms.SjmsComponent;
+import org.apache.camel.component.sjms.support.MyAsyncComponent;
 import org.apache.camel.test.junit4.CamelTestSupport;
 
 import org.junit.Test;
@@ -27,12 +28,21 @@ import org.junit.Test;
 /**
  *
  */
-public class AsyncConsumerInOutTwoTest extends CamelTestSupport {
+public class AsyncConsumerTest extends CamelTestSupport {
 
     @Test
     public void testAsyncJmsConsumer() throws Exception {
-        String out = template.requestBody("sjms:queue:start", "Hello World", String.class);
-        assertEquals("Bye World", out);
+        // Hello World is received first despite its send last
+        // the reason is that the first message is processed asynchronously
+        // and it takes 2 sec to complete, so in between we have time to
+        // process the 2nd message on the queue
+        getMockEndpoint("mock:result").expectedBodiesReceived("Hello World", "Camel");
+
+        template.sendBody("sjms:queue:start", "Hello Camel");
+        template.sendBody("sjms:queue:start", "Hello World");
+//        Thread.sleep(2000);
+
+        assertMockEndpointsSatisfied();
     }
 
     protected CamelContext createCamelContext() throws Exception {
@@ -56,8 +66,12 @@ public class AsyncConsumerInOutTwoTest extends CamelTestSupport {
             public void configure() throws Exception {
                 // enable async in only mode on the consumer
                 from("sjms:queue:start?asyncConsumer=true")
-                    .to("async:camel?delay=2000")
-                    .transform(constant("Bye World"));
+                        .choice()
+                            .when(body().contains("Camel"))
+                            .to("async:camel?delay=2000")
+                            .to("mock:result")
+                        .otherwise()
+                            .to("mock:result");
             }
         };
     }

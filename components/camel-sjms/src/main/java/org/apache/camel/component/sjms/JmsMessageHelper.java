@@ -37,6 +37,7 @@ import javax.jms.JMSException;
 import javax.jms.MapMessage;
 import javax.jms.Message;
 import javax.jms.ObjectMessage;
+import javax.jms.Session;
 import javax.jms.TextMessage;
 
 import org.apache.camel.Exchange;
@@ -427,6 +428,48 @@ public final class JmsMessageHelper {
         }
         exchange.getIn().setHeaders(headers);
         return exchange;
+    }
+    
+
+    
+    @SuppressWarnings("unchecked")
+    public static Message createMessage(Exchange exchange, Session session) throws Exception {
+        Message answer = null;
+        Object body = exchange.getIn().getBody();
+        JmsMessageType messageType = JmsMessageHelper.discoverType(exchange);
+
+        switch (messageType) {
+        case Bytes:
+            BytesMessage bytesMessage = session.createBytesMessage();
+            bytesMessage.writeBytes((byte[]) body);
+            answer = bytesMessage;
+            break;
+        case Map:
+            MapMessage mapMessage = session.createMapMessage();
+            Map<String, Object> objMap = (Map<String, Object>) body;
+            Set<String> keys = objMap.keySet();
+            for (String key : keys) {
+                Object value = objMap.get(key);
+                mapMessage.setObject(key, value);
+            }
+            answer = mapMessage;
+            break;
+        case Object:
+            ObjectMessage objectMessage = session.createObjectMessage();
+            objectMessage.setObject((Serializable) body);
+            answer = objectMessage;
+            break;
+        case Text:
+            TextMessage textMessage = session.createTextMessage();
+            textMessage.setText((String) body);
+            answer = textMessage;
+            break;
+        default:
+            break;
+        }
+        
+        answer = JmsMessageHelper.setJmsMessageHeaders(exchange, answer);
+        return answer;
     }
     
     private static boolean hasIllegalHeaderKey(String key) {

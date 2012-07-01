@@ -11,7 +11,9 @@
  *    See the License for the specific language governing permissions and
  *    limitations under the License.
  */
-package org.apache.camel.component.sjms.jms.queue;
+package org.apache.camel.component.sjms;
+
+import javax.jms.Session;
 
 import org.apache.camel.Consumer;
 import org.apache.camel.ExchangePattern;
@@ -19,41 +21,42 @@ import org.apache.camel.MultipleConsumersSupport;
 import org.apache.camel.Processor;
 import org.apache.camel.Producer;
 import org.apache.camel.RuntimeCamelException;
-import org.apache.camel.component.sjms.JmsKeyFormatStrategy;
-import org.apache.camel.component.sjms.MessageHandler;
-import org.apache.camel.component.sjms.SjmsComponent;
-import org.apache.camel.component.sjms.SjmsComponentConfiguration;
-import org.apache.camel.component.sjms.SjmsHeaderFilterStrategy;
+import org.apache.camel.component.sjms.consumer.QueueConsumer;
+import org.apache.camel.component.sjms.consumer.QueueListenerConsumer;
+import org.apache.camel.component.sjms.consumer.TransactedQueueListenerConsumer;
 import org.apache.camel.component.sjms.jms.SessionAcknowledgementType;
 import org.apache.camel.component.sjms.pool.ConnectionPool;
 import org.apache.camel.component.sjms.pool.SessionPool;
+import org.apache.camel.component.sjms.producer.QueueProducer;
+import org.apache.camel.component.sjms.producer.TransactedQueueProducer;
 import org.apache.camel.impl.DefaultEndpoint;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * TODO Add Class documentation for QueueEndpoint
+ * TODO Add Class documentation for SjmsEndpoint
  *
  */
-public class QueueEndpoint extends DefaultEndpoint implements MultipleConsumersSupport {
+public class SjmsEndpoint extends DefaultEndpoint implements MultipleConsumersSupport {
     protected final transient Logger logger = LoggerFactory
             .getLogger(getClass());
 
     private SjmsComponentConfiguration configuration;
     private ConnectionPool connections;
     private SessionPool sessions;
-    private MessageHandler messageHandler;
+    private SjmsMessageConsumer sjmsMessageConsumer;
     private boolean asyncConsumer = false;
     private boolean asyncProducer = false;
     private boolean transacted = false;
     private String namedReplyTo;
+    private int acknowledgementMode = Session.AUTO_ACKNOWLEDGE;
 
-    public QueueEndpoint() {
+    public SjmsEndpoint() {
         setExchangePattern(ExchangePattern.InOnly);
     }
 
-    public QueueEndpoint(String uri, SjmsComponent component) {
+    public SjmsEndpoint(String uri, SjmsComponent component) {
         super(uri, component);
         setConfiguration(component.getConfiguration());
         setExchangePattern(ExchangePattern.InOnly);
@@ -188,14 +191,14 @@ public class QueueEndpoint extends DefaultEndpoint implements MultipleConsumersS
     /**
      * @return
      */
-    public int getMaxProducers() {
+    public int getProducerCount() {
         return getConfiguration().getMaxProducers();
     }
 
     /**
      * @return
      */
-    public int getMaxConsumers() {
+    public int getConsumerCount() {
         return getConfiguration().getMaxConsumers();
     }
 
@@ -220,28 +223,28 @@ public class QueueEndpoint extends DefaultEndpoint implements MultipleConsumersS
     }
 
     /**
-     * Sets the MessageHandler value of messageHandler for this instance of
+     * Sets the SjmsMessageConsumer value of sjmsMessageConsumer for this instance of
      * SimpleJmsEndpoint.
      * 
-     * @param messageHandler
-     *            Sets MessageHandler, default is TODO add default
+     * @param sjmsMessageConsumer
+     *            Sets SjmsMessageConsumer, default is TODO add default
      */
-    public void setMessageHandler(MessageHandler messageHandler) {
-        this.messageHandler = messageHandler;
+    public void setMessageHandler(SjmsMessageConsumer sjmsMessageConsumer) {
+        this.sjmsMessageConsumer = sjmsMessageConsumer;
     }
 
     /**
-     * Gets the MessageHandler value of messageHandler for this instance of
+     * Gets the SjmsMessageConsumer value of sjmsMessageConsumer for this instance of
      * SimpleJmsEndpoint.
      * 
-     * @return the messageHandler
+     * @return the sjmsMessageConsumer
      */
-    public MessageHandler getMessageHandler() {
-        return messageHandler;
+    public SjmsMessageConsumer getMessageHandler() {
+        return sjmsMessageConsumer;
     }
 
     /**
-     * Sets the boolean value of asyncConsumer for this instance of QueueEndpoint.
+     * Sets the boolean value of asyncConsumer for this instance of SjmsEndpoint.
      *
      * @param asyncConsumer Sets boolean, default is TODO add default
      */
@@ -250,7 +253,7 @@ public class QueueEndpoint extends DefaultEndpoint implements MultipleConsumersS
     }
 
     /**
-     * Gets the boolean value of asyncConsumer for this instance of QueueEndpoint.
+     * Gets the boolean value of asyncConsumer for this instance of SjmsEndpoint.
      *
      * @return the asyncConsumer
      */
@@ -259,7 +262,7 @@ public class QueueEndpoint extends DefaultEndpoint implements MultipleConsumersS
     }
 
     /**
-     * Sets the boolean value of transacted for this instance of QueueEndpoint.
+     * Sets the boolean value of transacted for this instance of SjmsEndpoint.
      *
      * @param transacted Sets boolean, default is TODO add default
      */
@@ -268,7 +271,7 @@ public class QueueEndpoint extends DefaultEndpoint implements MultipleConsumersS
     }
 
     /**
-     * Gets the boolean value of transacted for this instance of QueueEndpoint.
+     * Gets the boolean value of transacted for this instance of SjmsEndpoint.
      *
      * @return the transacted
      */
@@ -277,7 +280,7 @@ public class QueueEndpoint extends DefaultEndpoint implements MultipleConsumersS
     }
 
     /**
-     * Sets the boolean value of asyncProducer for this instance of QueueEndpoint.
+     * Sets the boolean value of asyncProducer for this instance of SjmsEndpoint.
      *
      * @param asyncProducer Sets boolean, default is TODO add default
      */
@@ -286,7 +289,7 @@ public class QueueEndpoint extends DefaultEndpoint implements MultipleConsumersS
     }
 
     /**
-     * Gets the boolean value of asyncProducer for this instance of QueueEndpoint.
+     * Gets the boolean value of asyncProducer for this instance of SjmsEndpoint.
      *
      * @return the asyncProducer
      */
@@ -295,7 +298,7 @@ public class QueueEndpoint extends DefaultEndpoint implements MultipleConsumersS
     }
 
     /**
-     * Sets the String value of namedReplyTo for this instance of QueueEndpoint.
+     * Sets the String value of namedReplyTo for this instance of SjmsEndpoint.
      *
      * @param namedReplyTo Sets the value of the namedReplyTo attribute
      */
@@ -305,7 +308,7 @@ public class QueueEndpoint extends DefaultEndpoint implements MultipleConsumersS
     }
 
     /**
-     * Gets the String value of namedReplyTo for this instance of QueueEndpoint.
+     * Gets the String value of namedReplyTo for this instance of SjmsEndpoint.
      *
      * @return the namedReplyTo
      */
@@ -314,7 +317,7 @@ public class QueueEndpoint extends DefaultEndpoint implements MultipleConsumersS
     }
 
     /**
-     * Sets the String value of messageExchangePattern for this instance of QueueEndpoint.
+     * Sets the String value of messageExchangePattern for this instance of SjmsEndpoint.
      *
      * @param messageExchangePattern Sets String, default is TODO add default
      */
@@ -332,11 +335,29 @@ public class QueueEndpoint extends DefaultEndpoint implements MultipleConsumersS
     }
 
     /**
-     * Gets the String value of messageExchangePattern for this instance of QueueEndpoint.
+     * Gets the String value of messageExchangePattern for this instance of SjmsEndpoint.
      *
      * @return the messageExchangePattern
      */
     public ExchangePattern getMessageExchangePattern() {
         return getExchangePattern();
+    }
+
+    /**
+     * Sets the int value of acknowledgementMode for this instance of SjmsEndpoint.
+     *
+     * @param acknowledgementMode Sets int, default is TODO add default
+     */
+    public void setAcknowledgementMode(int acknowledgementMode) {
+        this.acknowledgementMode = acknowledgementMode;
+    }
+
+    /**
+     * Gets the int value of acknowledgementMode for this instance of SjmsEndpoint.
+     *
+     * @return the acknowledgementMode
+     */
+    public int getAcknowledgementMode() {
+        return acknowledgementMode;
     }
 }

@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.camel.component.sjms.jms.queue.async;
+package org.apache.camel.component.sjms.support;
 
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;

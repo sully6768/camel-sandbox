@@ -16,7 +16,6 @@ package org.apache.camel.component.sjms.messagehandlers;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.jms.JMSException;
-import javax.jms.Message;
 
 import org.apache.camel.AsyncCallback;
 import org.apache.camel.Exchange;
@@ -40,11 +39,6 @@ public class InOutMessageHandler extends DefaultMessageHandler {
     public InOutMessageHandler(AtomicBoolean stopped) {
         super(stopped);
     }
-    
-    @Override
-    public void onMessage(Message message) {
-        handleMessage(message);
-    }
 
     /**
      * @param message
@@ -52,7 +46,7 @@ public class InOutMessageHandler extends DefaultMessageHandler {
     @Override
     public void doHandleMessage(final Exchange exchange) {
         if(LOGGER.isDebugEnabled()) {
-            LOGGER.debug("MessageHandler invoked for Exchange id:{} ", exchange.getExchangeId());
+            LOGGER.debug("SjmsMessageConsumer invoked for Exchange id:{} ", exchange.getExchangeId());
         }
         if (isStarted()) {
             MessageHanderAsyncCallback callback = new MessageHanderAsyncCallback(exchange);
@@ -84,11 +78,11 @@ public class InOutMessageHandler extends DefaultMessageHandler {
                 }    
             }
         } else {
-            LOGGER.warn("MessageHandler invoked while stopped.  Exchange id:{} will not be processed.", exchange.getExchangeId());
+            LOGGER.warn("SjmsMessageConsumer invoked while stopped.  Exchange id:{} will not be processed.", exchange.getExchangeId());
         }
 
         if(LOGGER.isDebugEnabled()) {
-            LOGGER.debug("MessageHandler invoked for Exchange id:{} ", exchange.getExchangeId());
+            LOGGER.debug("SjmsMessageConsumer invoked for Exchange id:{} ", exchange.getExchangeId());
         }
     }
     

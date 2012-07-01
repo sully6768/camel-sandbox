@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.camel.component.sjms.jms.queue;
+package org.apache.camel.component.sjms;
 
 import org.apache.activemq.ActiveMQConnectionFactory;
 import org.apache.camel.CamelContext;
@@ -23,13 +23,14 @@ import org.apache.camel.ExchangePattern;
 import org.apache.camel.ResolveEndpointFailedException;
 import org.apache.camel.component.sjms.SjmsComponent;
 import org.apache.camel.component.sjms.SjmsComponentConfiguration;
+import org.apache.camel.component.sjms.SjmsEndpoint;
 import org.apache.camel.test.junit4.CamelTestSupport;
 
 import org.junit.Test;
 
-public class QueueEndpointTest extends CamelTestSupport {
+public class SjmsEndpointTest extends CamelTestSupport {
     
-    public QueueEndpointTest() {
+    public SjmsEndpointTest() {
     	enableJMX();
 	}
     
@@ -42,15 +43,15 @@ public class QueueEndpointTest extends CamelTestSupport {
     public void testQueueEndpoint() throws Exception {
         Endpoint sjms = context.getEndpoint("sjms:queue:test");
         assertNotNull(sjms);
-        assertTrue(sjms instanceof QueueEndpoint);
+        assertTrue(sjms instanceof SjmsEndpoint);
     }
 
     @Test
     public void testSetTransacted() throws Exception {
         Endpoint endpoint = context.getEndpoint("sjms:queue:test?transacted=true");
         assertNotNull(endpoint);
-        assertTrue(endpoint instanceof QueueEndpoint);
-        QueueEndpoint qe = (QueueEndpoint) endpoint;
+        assertTrue(endpoint instanceof SjmsEndpoint);
+        SjmsEndpoint qe = (SjmsEndpoint) endpoint;
         assertTrue(qe.isTransacted());
     }
 
@@ -58,8 +59,8 @@ public class QueueEndpointTest extends CamelTestSupport {
     public void testAsyncConsumer() throws Exception {
         Endpoint endpoint = context.getEndpoint("sjms:queue:test?asyncConsumer=true");
         assertNotNull(endpoint);
-        assertTrue(endpoint instanceof QueueEndpoint);
-        QueueEndpoint qe = (QueueEndpoint) endpoint;
+        assertTrue(endpoint instanceof SjmsEndpoint);
+        SjmsEndpoint qe = (SjmsEndpoint) endpoint;
         assertTrue(qe.isAsyncConsumer());
     }
 
@@ -67,8 +68,8 @@ public class QueueEndpointTest extends CamelTestSupport {
     public void testAsyncProducer() throws Exception {
         Endpoint endpoint = context.getEndpoint("sjms:queue:test?asyncProducer=true");
         assertNotNull(endpoint);
-        assertTrue(endpoint instanceof QueueEndpoint);
-        QueueEndpoint qe = (QueueEndpoint) endpoint;
+        assertTrue(endpoint instanceof SjmsEndpoint);
+        SjmsEndpoint qe = (SjmsEndpoint) endpoint;
         assertTrue(qe.isAsyncProducer());
     }
 
@@ -77,8 +78,8 @@ public class QueueEndpointTest extends CamelTestSupport {
         String namedReplyTo = "reply.to.queue";
         Endpoint endpoint = context.getEndpoint("sjms:queue:test?namedReplyTo=" + namedReplyTo);
         assertNotNull(endpoint);
-        assertTrue(endpoint instanceof QueueEndpoint);
-        QueueEndpoint qe = (QueueEndpoint) endpoint;
+        assertTrue(endpoint instanceof SjmsEndpoint);
+        SjmsEndpoint qe = (SjmsEndpoint) endpoint;
         assertEquals(qe.getNamedReplyTo(), namedReplyTo);
         assertEquals(qe.createExchange().getPattern(), ExchangePattern.InOut);
     }
@@ -126,8 +127,8 @@ public class QueueEndpointTest extends CamelTestSupport {
         String namedReplyTo = "reply.to.queue";
         Endpoint endpoint = context.getEndpoint("sjms:queue:test?namedReplyTo="+namedReplyTo+"&messageExchangePattern=" + ExchangePattern.InOut);
         assertNotNull(endpoint);
-        assertTrue(endpoint instanceof QueueEndpoint);
-        QueueEndpoint qe = (QueueEndpoint) endpoint;
+        assertTrue(endpoint instanceof SjmsEndpoint);
+        SjmsEndpoint qe = (SjmsEndpoint) endpoint;
         assertEquals(qe.getNamedReplyTo(), namedReplyTo);
         assertEquals(qe.createExchange().getPattern(), ExchangePattern.InOut);
     }

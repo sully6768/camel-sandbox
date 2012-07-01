@@ -13,13 +13,14 @@
  *    See the License for the specific language governing permissions and
  *    limitations under the License.
  */
-package org.apache.camel.component.sjms.jms.queue;
+package org.apache.camel.component.sjms.consumer;
 
 import java.security.SecureRandom;
 import java.util.UUID;
 
 import org.apache.camel.Endpoint;
 import org.apache.camel.Processor;
+import org.apache.camel.component.sjms.SjmsEndpoint;
 import org.apache.camel.component.sjms.pool.ConnectionPool;
 import org.apache.camel.component.sjms.pool.SessionPool;
 import org.apache.camel.impl.DefaultConsumer;
@@ -40,8 +41,8 @@ public abstract class QueueConsumer extends DefaultConsumer {
         super(endpoint, processor);
     }
 
-    protected QueueEndpoint getQueueEndpoint() {
-        return (QueueEndpoint)this.getEndpoint();
+    protected SjmsEndpoint getQueueEndpoint() {
+        return (SjmsEndpoint)this.getEndpoint();
     }
     
     protected ConnectionPool getConnectionPool() {
@@ -93,8 +94,8 @@ public abstract class QueueConsumer extends DefaultConsumer {
      *
      * @return the maxProducers
      */
-    public int getMaxConsumers() {
-        return getQueueEndpoint().getMaxConsumers();
+    public int getConsumerCount() {
+        return getQueueEndpoint().getConsumerCount();
     }
 
     /**

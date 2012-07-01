@@ -13,15 +13,17 @@
  */
 package org.apache.camel.component.sjms;
 
-import javax.jms.Message;
-import javax.jms.MessageListener;
+import org.apache.camel.AsyncCallback;
+import org.apache.camel.Exchange;
 
 /**
- * TODO Add Class documentation for MessageHandler
+ * TODO Add Class documentation for SjmsMessageProducer
  *
  * @author sully6768
  */
-public interface MessageHandler extends MessageListener{
-    public void handleMessage(Message message);
+public interface SjmsMessageProducer {
+
+    public boolean sendMessage(Exchange exchange, AsyncCallback callback);
     public void close() throws Exception;
+    
 }
