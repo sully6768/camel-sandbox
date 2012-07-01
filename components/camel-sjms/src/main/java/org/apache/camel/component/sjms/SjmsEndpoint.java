@@ -27,8 +27,7 @@ import org.apache.camel.component.sjms.consumer.TransactedQueueListenerConsumer;
 import org.apache.camel.component.sjms.jms.SessionAcknowledgementType;
 import org.apache.camel.component.sjms.pool.ConnectionPool;
 import org.apache.camel.component.sjms.pool.SessionPool;
-import org.apache.camel.component.sjms.producer.QueueProducer;
-import org.apache.camel.component.sjms.producer.TransactedQueueProducer;
+import org.apache.camel.component.sjms.producer.DestinationProducer;
 import org.apache.camel.impl.DefaultEndpoint;
 
 import org.slf4j.Logger;
@@ -46,11 +45,11 @@ public class SjmsEndpoint extends DefaultEndpoint implements MultipleConsumersSu
     private ConnectionPool connections;
     private SessionPool sessions;
     private SjmsMessageConsumer sjmsMessageConsumer;
-    private boolean asyncConsumer = false;
-    private boolean asyncProducer = false;
+    private boolean synchronous = true;
     private boolean transacted = false;
     private String namedReplyTo;
     private int acknowledgementMode = Session.AUTO_ACKNOWLEDGE;
+    private boolean topic = false;
 
     public SjmsEndpoint() {
         setExchangePattern(ExchangePattern.InOnly);
@@ -58,6 +57,16 @@ public class SjmsEndpoint extends DefaultEndpoint implements MultipleConsumersSu
 
     public SjmsEndpoint(String uri, SjmsComponent component) {
         super(uri, component);
+        if (getEndpointUri().indexOf("://queue:") > -1) {
+            setTopic(false);
+        } else if (getEndpointUri().indexOf("://topic:") > -1) {
+            setTopic(true);
+        }  else {
+            throw new RuntimeCamelException("Endpoint URI unsupported: " + uri);
+        }
+        if (isTransacted()) {
+            setAcknowledgementMode(Session.SESSION_TRANSACTED);
+        }
         setConfiguration(component.getConfiguration());
         setExchangePattern(ExchangePattern.InOnly);
     }
@@ -97,13 +106,8 @@ public class SjmsEndpoint extends DefaultEndpoint implements MultipleConsumersSu
 
     @Override
     public Producer createProducer() throws Exception {
-        QueueProducer answer = new QueueProducer(this);
-        if(isTransacted()) {
-            answer = new TransactedQueueProducer(this);
-        } else {
-            answer = new QueueProducer(this);
-        }
-        return answer;
+        SjmsProducer producer = new DestinationProducer(this);
+        return producer;
     }
 
     @Override
@@ -244,21 +248,21 @@ public class SjmsEndpoint extends DefaultEndpoint implements MultipleConsumersSu
     }
 
     /**
-     * Sets the boolean value of asyncConsumer for this instance of SjmsEndpoint.
+     * Sets the boolean value of synchronous for this instance of SjmsEndpoint.
      *
-     * @param asyncConsumer Sets boolean, default is TODO add default
+     * @param synchronous Sets boolean, default is TODO add default
      */
-    public void setAsyncConsumer(boolean asyncConsumer) {
-        this.asyncConsumer = asyncConsumer;
+    public void setSynchronous(boolean asyncConsumer) {
+        this.synchronous = asyncConsumer;
     }
 
     /**
-     * Gets the boolean value of asyncConsumer for this instance of SjmsEndpoint.
+     * Gets the boolean value of synchronous for this instance of SjmsEndpoint.
      *
-     * @return the asyncConsumer
+     * @return the synchronous
      */
-    public boolean isAsyncConsumer() {
-        return asyncConsumer;
+    public boolean isSynchronous() {
+        return synchronous;
     }
 
     /**
@@ -277,24 +281,6 @@ public class SjmsEndpoint extends DefaultEndpoint implements MultipleConsumersSu
      */
     public boolean isTransacted() {
         return transacted;
-    }
-
-    /**
-     * Sets the boolean value of asyncProducer for this instance of SjmsEndpoint.
-     *
-     * @param asyncProducer Sets boolean, default is TODO add default
-     */
-    public void setAsyncProducer(boolean asyncProducer) {
-        this.asyncProducer = asyncProducer;
-    }
-
-    /**
-     * Gets the boolean value of asyncProducer for this instance of SjmsEndpoint.
-     *
-     * @return the asyncProducer
-     */
-    public boolean isAsyncProducer() {
-        return asyncProducer;
     }
 
     /**
@@ -359,5 +345,23 @@ public class SjmsEndpoint extends DefaultEndpoint implements MultipleConsumersSu
      */
     public int getAcknowledgementMode() {
         return acknowledgementMode;
+    }
+
+    /**
+     * Sets the boolean value of topic for this instance of SjmsEndpoint.
+     *
+     * @param topic Sets boolean, default is TODO add default
+     */
+    public void setTopic(boolean topic) {
+        this.topic = topic;
+    }
+
+    /**
+     * Gets the boolean value of topic for this instance of SjmsEndpoint.
+     *
+     * @return the topic
+     */
+    public boolean isTopic() {
+        return topic;
     }
 }

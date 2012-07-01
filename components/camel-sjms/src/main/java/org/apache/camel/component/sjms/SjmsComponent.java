@@ -39,16 +39,10 @@ public class SjmsComponent extends DefaultComponent implements HeaderFilterStrat
     protected Endpoint createEndpoint(String uri, String remaining,
             Map<String, Object> parameters) throws Exception {
         validateMepAndReplyTo(parameters);
-        SjmsEndpoint endpoint = null;
-        if (uri.indexOf("://queue:") > -1) {
-            endpoint = new SjmsEndpoint(uri, this);
-        } else {
-//            endpoint = new TopicEndpoint(uri, this);
-        }
+        SjmsEndpoint endpoint = new SjmsEndpoint(uri, this);
         setProperties(endpoint, parameters);
         if(endpoint.isTransacted()) {
-            endpoint.setAsyncConsumer(false);
-            endpoint.setAsyncProducer(false);
+            endpoint.setSynchronous(true);
         }
         return endpoint;
     }

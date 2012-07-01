@@ -30,11 +30,11 @@ import org.apache.camel.component.sjms.support.JmsTestSupport;
 
 import org.junit.Test;
 
-public class InOutQueueProducerTest extends JmsTestSupport {
+public class InOnlyTopicProducerTest extends JmsTestSupport {
     
-    private static final String TEST_DESTINATION_NAME = "test.foo";
+    private static final String TEST_DESTINATION_NAME = "test.foo.topic";
     
-    public InOutQueueProducerTest() {
+    public InOnlyTopicProducerTest() {
 	}
     
     @Override
@@ -43,8 +43,8 @@ public class InOutQueueProducerTest extends JmsTestSupport {
     }
 
     @Test
-    public void testInOutQueueProducer() throws Exception {
-        MessageConsumer mc = JmsObjectFactory.createQueueConsumer(getSession(), TEST_DESTINATION_NAME);
+    public void testInOnlyTopicProducerProducer() throws Exception {
+        MessageConsumer mc = JmsObjectFactory.createTopicConsumer(getSession(), TEST_DESTINATION_NAME);
         assertNotNull(mc);
         final String expectedBody = "Hello World!";
         MockEndpoint mock = getMockEndpoint("mock:result");
@@ -99,7 +99,7 @@ public class InOutQueueProducerTest extends JmsTestSupport {
         return new RouteBuilder() {
             public void configure() {
                 from("direct:start")
-                    .to("sjms:queue:" + TEST_DESTINATION_NAME);
+                    .to("sjms:topic:" + TEST_DESTINATION_NAME);
                 
                 from("direct:finish")
                     .to("log:test.log.1?showBody=true", "mock:result");

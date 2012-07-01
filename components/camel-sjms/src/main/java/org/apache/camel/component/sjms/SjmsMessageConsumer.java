@@ -21,6 +21,6 @@ import javax.jms.MessageListener;
  *
  * @author sully6768
  */
-public interface SjmsMessageConsumer extends MessageListener{
+public interface SjmsMessageConsumer extends MessageListener {
     public void handleMessage(Message message);
 }

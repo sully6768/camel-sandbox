@@ -16,7 +16,7 @@ package org.apache.camel.component.sjms;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 
-import javax.jms.Message;
+import javax.jms.JMSException;
 import javax.jms.MessageProducer;
 import javax.jms.Session;
 
@@ -24,9 +24,11 @@ import org.apache.camel.AsyncCallback;
 import org.apache.camel.Endpoint;
 import org.apache.camel.Exchange;
 import org.apache.camel.ExchangePattern;
+import org.apache.camel.RuntimeCamelException;
 import org.apache.camel.component.sjms.pool.ConnectionPool;
 import org.apache.camel.component.sjms.pool.ObjectPool;
 import org.apache.camel.impl.DefaultAsyncProducer;
+import org.apache.camel.spi.Synchronization;
 
 /**
  * TODO Add Class documentation for SjmsProducer
@@ -177,7 +179,7 @@ public abstract class SjmsProducer extends DefaultAsyncProducer  {
         }
     }
     
-    protected MessageProducerPool producers;
+    private MessageProducerPool producers;
     private final ExecutorService executor;
 
     public SjmsProducer(Endpoint endpoint) {
@@ -188,18 +190,18 @@ public abstract class SjmsProducer extends DefaultAsyncProducer  {
     @Override
     protected void doStart() throws Exception {
         super.doStart();
-        if(producers == null) {
-            producers = new MessageProducerPool();
-            producers.fillPool();
+        if(getProducers() == null) {
+            setProducers(new MessageProducerPool());
+            getProducers().fillPool();
         }
     }
 
     @Override
     protected void doStop() throws Exception {
         super.doStop();
-        if (producers != null) {
-            producers.drainPool();
-            producers = null;   
+        if (getProducers() != null) {
+            getProducers().drainPool();
+            setProducers(null);   
         }
     }
 
@@ -232,20 +234,32 @@ public abstract class SjmsProducer extends DefaultAsyncProducer  {
             log.debug("Processing InOnly Exchange id:{}", exchange.getExchangeId());
         }
         try {
-            if(isAsync()) {
+            if( ! isSyncronous()) {
                 if(log.isDebugEnabled()) {
                     log.debug("Sending message asynchronously for Exchange id:{}", exchange.getExchangeId());
                 }
-                executor.submit(new Callable<Object>() {
-                    public Object call() throws Exception {
-                        sendMessage(exchange);
-                        return null;
+                executor.execute(new Runnable() {
+                    
+                    @Override
+                    public void run() {
+                        try {
+                            sendMessage(exchange);
+                        } catch (Exception e) {
+                            throw new RuntimeCamelException(e);
+                        }
                     }
                 });
+//                executor.submit(new Callable<Object>() {
+//                    public Object call() throws Exception {
+//                        sendMessage(exchange);
+//                        return null;
+//                    }
+//                });
             } else {
                 if(log.isDebugEnabled()) {
                     log.debug("Sending message synchronously for Exchange id:{}", exchange.getExchangeId());
                 }
+                syncProcessing = true;
                 sendMessage(exchange);
             }
         } catch (Exception e) {
@@ -254,7 +268,7 @@ public abstract class SjmsProducer extends DefaultAsyncProducer  {
             }
             exchange.setException(e);
         }
-        callback.done(false);
+        callback.done(syncProcessing);
         if(log.isDebugEnabled()) {
             log.debug("Processing InOnly Exchange id:{}", exchange.getExchangeId() + " - SUCCESS");
         }
@@ -267,7 +281,7 @@ public abstract class SjmsProducer extends DefaultAsyncProducer  {
             log.debug("Processing Robust-InOnly Exchange id:{}", exchange.getExchangeId());
         }
         try {
-            if(isAsync()) {
+            if(isSyncronous()) {
                 if(log.isDebugEnabled()) {
                     log.debug("  Sending message asynchronously for Exchange id:{}", exchange.getExchangeId());
                 }
@@ -281,6 +295,7 @@ public abstract class SjmsProducer extends DefaultAsyncProducer  {
                 if(log.isDebugEnabled()) {
                     log.debug("  Sending message synchronously for Exchange id:{}", exchange.getExchangeId());
                 }
+                syncProcessing = true;
                 sendMessage(exchange);
             }
         } catch (Exception e) {
@@ -289,7 +304,7 @@ public abstract class SjmsProducer extends DefaultAsyncProducer  {
             }
             exchange.setException(e);
         }
-        callback.done(false);
+        callback.done(syncProcessing);
         if(log.isDebugEnabled()) {
             log.debug("Processing Robust-InOnly Exchange id:{}", exchange.getExchangeId() + " - SUCCESS");
         }
@@ -302,7 +317,7 @@ public abstract class SjmsProducer extends DefaultAsyncProducer  {
             log.debug("Processing InOut Exchange id:{}", exchange.getExchangeId());
         }
         try {
-            if(isAsync()) {
+            if(isSyncronous()) {
                 if(log.isDebugEnabled()) {
                     log.debug("  Sending message asynchronously for Exchange id:{}", exchange.getExchangeId());
                 }
@@ -316,6 +331,7 @@ public abstract class SjmsProducer extends DefaultAsyncProducer  {
                 if(log.isDebugEnabled()) {
                     log.debug("  Sending message synchronously for Exchange id:{}", exchange.getExchangeId());
                 }
+                syncProcessing = true;
                 sendMessage(exchange);
             }
         } catch (Exception e) {
@@ -325,21 +341,14 @@ public abstract class SjmsProducer extends DefaultAsyncProducer  {
             exchange.setException(e);
         }
         // Execute the call back
-        callback.done(false);
+        callback.done(syncProcessing);
         if(log.isDebugEnabled()) {
             log.debug("Processing InOut Exchange id:{}", exchange.getExchangeId() + " - SUCCESS");
         }
         return syncProcessing;
     }
     
-    protected void sendMessage(final Exchange exchange) throws Exception {
-        if (producers != null) {
-            MessageProducerModel model = producers.borrowObject();
-            Message message = JmsMessageHelper.createMessage(exchange, model.getSession());
-            model.getMessageProducer().send(message);
-            producers.returnObject(model);
-        }
-    }
+    public abstract void sendMessage(final Exchange exchange) throws Exception;
 
     
     private MessageProducerModel createProducerModel() throws Exception {
@@ -357,7 +366,7 @@ public abstract class SjmsProducer extends DefaultAsyncProducer  {
     }
     
     /**
-     * Gets the acknowledgment mode for this instance of QueueProducer.
+     * Gets the acknowledgment mode for this instance of DestinationProducer.
      *
      * @return the acknowledgment mode
      */
@@ -366,16 +375,16 @@ public abstract class SjmsProducer extends DefaultAsyncProducer  {
     }
 
     /**
-     * Gets the boolean value of async for this instance of QueueProducer.
+     * Gets the boolean value of async for this instance of DestinationProducer.
      *
      * @return true if asynchronous, otherwise it is synchronous 
      */
-    public boolean isAsync() {
-        return getQueueEndpoint().isAsyncProducer();
+    public boolean isSyncronous() {
+        return getQueueEndpoint().isSynchronous();
     }
 
     /**
-     * Gets the String value of replyTo for this instance of QueueProducer.
+     * Gets the String value of replyTo for this instance of DestinationProducer.
      *
      * @return the replyTo
      */
@@ -384,7 +393,7 @@ public abstract class SjmsProducer extends DefaultAsyncProducer  {
     }
 
     /**
-     * Gets the String value of destinationName for this instance of QueueProducer.
+     * Gets the String value of destinationName for this instance of DestinationProducer.
      *
      * @return the destinationName
      */
@@ -393,12 +402,110 @@ public abstract class SjmsProducer extends DefaultAsyncProducer  {
     }
 
     /**
-     * Gets the int value of maxProducers for this instance of QueueProducer.
+     * Gets the int value of maxProducers for this instance of DestinationProducer.
      *
      * @return the maxProducers
      */
     public int getMaxProducers() {
         return getQueueEndpoint().getProducerCount();
+    }
+
+    /**
+     * Sets the MessageProducerPool value of producers for this instance of SjmsProducer.
+     *
+     * @param producers Sets MessageProducerPool, default is TODO add default
+     */
+    public void setProducers(MessageProducerPool producers) {
+        this.producers = producers;
+    }
+
+    /**
+     * Gets the MessageProducerPool value of producers for this instance of SjmsProducer.
+     *
+     * @return the producers
+     */
+    public MessageProducerPool getProducers() {
+        return producers;
+    }
+    
+    public boolean isEndpointTopic() {
+        return getQueueEndpoint().isTopic();
+    }
+    
+    public boolean isEndpointTransacted() {
+        return getQueueEndpoint().isTransacted();
+    }
+    
+    /**
+     * TransactedQueueProducerSynchronization
+     * 
+     * TODO is this appropriate for transactions?
+     *
+     * @author sully6768
+     */
+    protected class ProducerSynchronization implements Synchronization {
+        private MessageProducerModel model;
+        
+        public ProducerSynchronization(MessageProducerModel model) {
+            this.model = model;
+        }
+        
+        /*
+         * @see org.apache.camel.spi.Synchronization#onFailure(org.apache.camel.Exchange)
+         *
+         * @param exchange
+         */
+        @Override
+        public void onFailure(Exchange exchange) {
+            if(log.isDebugEnabled()) {
+                log.debug("Processing failure of Exchange id:{}", exchange.getExchangeId());
+            }
+            try {
+                if (model != null) {
+                    if (model.getSession() != null) {
+                        this.model.getSession().rollback();
+                    }
+                }
+            } catch (JMSException e) {
+                log.warn("Failed to rollback the session: {}", e.getMessage());
+            } finally {
+                try {
+                    getProducers().returnObject(model);
+                } catch (Exception e) {
+                    log.warn("Unable to return the producer model to the pool: {}", e.getMessage());
+                    exchange.setException(e);
+                }
+            }
+        }
+        
+        /*
+         * @see org.apache.camel.spi.Synchronization#onComplete(org.apache.camel.Exchange)
+         *
+         * @param exchange
+         */
+        @Override
+        public void onComplete(Exchange exchange) {
+            if(log.isDebugEnabled()) {
+                log.debug("Processing completion of Exchange id:{}", exchange.getExchangeId());
+            }
+            try {
+                if (model != null) {
+                    if (model.getSession() != null) {
+                        this.model.getSession().commit();
+                    }
+                }
+            } catch (JMSException e) {
+                log.warn("Failed to commit the session: {}", e.getMessage());
+                exchange.setException(e);
+            } finally {
+                try {
+                    getProducers().returnObject(model);
+                } catch (Exception e) {
+                    log.warn("Unable to return the producer model to the pool: {}", e.getMessage());
+                    exchange.setException(e);
+                }
+            }
+        }
     }
 
 }

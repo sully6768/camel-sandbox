@@ -54,7 +54,7 @@ public abstract class QueueConsumer extends DefaultConsumer {
     }
 
     /**
-     * Gets the boolean value of transacted for this instance of QueueProducer.
+     * Gets the boolean value of transacted for this instance of DestinationProducer.
      *
      * @return the transacted
      */
@@ -63,16 +63,16 @@ public abstract class QueueConsumer extends DefaultConsumer {
     }
 
     /**
-     * Gets the boolean value of async for this instance of QueueProducer.
+     * Gets the boolean value of async for this instance of DestinationProducer.
      *
      * @return the async
      */
     public boolean isAsync() {
-        return getQueueEndpoint().isAsyncConsumer();
+        return getQueueEndpoint().isSynchronous();
     }
 
     /**
-     * Gets the String value of replyTo for this instance of QueueProducer.
+     * Gets the String value of replyTo for this instance of DestinationProducer.
      *
      * @return the replyTo
      */
@@ -81,7 +81,7 @@ public abstract class QueueConsumer extends DefaultConsumer {
     }
 
     /**
-     * Gets the String value of destinationName for this instance of QueueProducer.
+     * Gets the String value of destinationName for this instance of DestinationProducer.
      *
      * @return the destinationName
      */
@@ -90,7 +90,7 @@ public abstract class QueueConsumer extends DefaultConsumer {
     }
 
     /**
-     * Gets the int value of maxProducers for this instance of QueueProducer.
+     * Gets the int value of maxProducers for this instance of DestinationProducer.
      *
      * @return the maxProducers
      */

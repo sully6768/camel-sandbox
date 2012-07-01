@@ -56,21 +56,12 @@ public class SjmsEndpointTest extends CamelTestSupport {
     }
 
     @Test
-    public void testAsyncConsumer() throws Exception {
-        Endpoint endpoint = context.getEndpoint("sjms:queue:test?asyncConsumer=true");
-        assertNotNull(endpoint);
-        assertTrue(endpoint instanceof SjmsEndpoint);
-        SjmsEndpoint qe = (SjmsEndpoint) endpoint;
-        assertTrue(qe.isAsyncConsumer());
-    }
-
-    @Test
     public void testAsyncProducer() throws Exception {
-        Endpoint endpoint = context.getEndpoint("sjms:queue:test?asyncProducer=true");
+        Endpoint endpoint = context.getEndpoint("sjms:queue:test?synchronous=true");
         assertNotNull(endpoint);
         assertTrue(endpoint instanceof SjmsEndpoint);
         SjmsEndpoint qe = (SjmsEndpoint) endpoint;
-        assertTrue(qe.isAsyncProducer());
+        assertTrue(qe.isSynchronous());
     }
 
     @Test

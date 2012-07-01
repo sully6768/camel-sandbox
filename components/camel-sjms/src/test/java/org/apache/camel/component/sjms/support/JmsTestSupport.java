@@ -14,8 +14,6 @@
 package org.apache.camel.component.sjms.support;
 
 import javax.jms.Connection;
-import javax.jms.MessageConsumer;
-import javax.jms.Queue;
 import javax.jms.Session;
 
 import org.apache.activemq.ActiveMQConnectionFactory;
@@ -44,6 +42,7 @@ public class JmsTestSupport extends CamelTestSupport {
     @Override
     public void setUp() throws Exception {
         super.setUp();
+        
         setConnection(connectionFactory.createConnection());
         getConnection().start();
         setSession(getConnection().createSession(false, Session.AUTO_ACKNOWLEDGE));
@@ -51,24 +50,13 @@ public class JmsTestSupport extends CamelTestSupport {
 
     @Override
     public void tearDown() throws Exception {
-        super.tearDown();
         if (getConnection() != null) {
             getConnection().stop();
         }
         if (getSession() != null) {
             getSession().close();
         }
-    }
-
-    /**
-     * @param queueName
-     * @return
-     * @throws Exception
-     */
-    protected MessageConsumer createConsumer(String queueName) throws Exception {
-        Queue q = getSession().createQueue(queueName);
-        MessageConsumer mc = getSession().createConsumer(q);
-        return mc;
+        super.tearDown();
     }
 
     /**

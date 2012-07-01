@@ -23,18 +23,20 @@ import javax.jms.MessageConsumer;
 import javax.jms.Session;
 import javax.jms.TextMessage;
 
+import org.apache.activemq.ActiveMQConnectionFactory;
 import org.apache.camel.CamelContext;
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.component.mock.MockEndpoint;
 import org.apache.camel.component.sjms.SjmsComponent;
 import org.apache.camel.component.sjms.SjmsComponentConfiguration;
+import org.apache.camel.component.sjms.jms.JmsObjectFactory;
 import org.apache.camel.component.sjms.support.JmsTestSupport;
 
 import org.junit.Test;
 
 public class TransactedQueueProducerTest extends JmsTestSupport {
     
-    private static final String TEST_DESTINATION_NAME = "test.foo";
+    private static final String TEST_DESTINATION_NAME = "transacted.test.queue";
     
     public TransactedQueueProducerTest() {
 	}
@@ -47,6 +49,7 @@ public class TransactedQueueProducerTest extends JmsTestSupport {
     @Override
     public void setUp() throws Exception {
         super.setUp();
+        connectionFactory = new ActiveMQConnectionFactory("vm://broker?broker.persistent=false&broker.useJmx=false");
         setConnection(connectionFactory.createConnection());
         getConnection().start();
         setSession(getConnection().createSession(true, Session.SESSION_TRANSACTED));
@@ -54,7 +57,7 @@ public class TransactedQueueProducerTest extends JmsTestSupport {
 
     @Test
     public void testTransactedQueueProducer() throws Exception {
-        MessageConsumer mc = createConsumer(TEST_DESTINATION_NAME);
+        MessageConsumer mc = JmsObjectFactory.createQueueConsumer(getSession(), TEST_DESTINATION_NAME);
         assertNotNull(mc);
         final String expectedBody = "Hello World!";
         MockEndpoint mock = getMockEndpoint("mock:result");
@@ -83,7 +86,7 @@ public class TransactedQueueProducerTest extends JmsTestSupport {
 
     @Test
     public void testTransactedQueueProducerAsynchronousOverride() throws Exception {
-        MessageConsumer mc = createConsumer(TEST_DESTINATION_NAME);
+        MessageConsumer mc = JmsObjectFactory.createQueueConsumer(getSession(), TEST_DESTINATION_NAME);
         assertNotNull(mc);
         final String expectedBody = "Hello World!";
         MockEndpoint mock = getMockEndpoint("mock:result");
@@ -112,7 +115,7 @@ public class TransactedQueueProducerTest extends JmsTestSupport {
 
     @Test
     public void testTransactedQueueProducerFailed() throws Exception {
-        MessageConsumer mc = createConsumer(TEST_DESTINATION_NAME);
+        MessageConsumer mc = JmsObjectFactory.createQueueConsumer(getSession(), TEST_DESTINATION_NAME);
         assertNotNull(mc);
         final String expectedBody = "Transaction Failed";
         MockEndpoint mock = getMockEndpoint("mock:result");
@@ -172,7 +175,7 @@ public class TransactedQueueProducerTest extends JmsTestSupport {
                     .to("sjms:queue:" + TEST_DESTINATION_NAME + "?transacted=true");
                 
                 from("direct:start.transacted.async.override")
-                    .to("sjms:queue:" + TEST_DESTINATION_NAME + "?transacted=true&asyncProducer=true");
+                    .to("sjms:queue:" + TEST_DESTINATION_NAME + "?transacted=true&synchronous=false");
                 
                 from("direct:finish")
                     .to("log:test.log.1?showBody=true", "mock:result");

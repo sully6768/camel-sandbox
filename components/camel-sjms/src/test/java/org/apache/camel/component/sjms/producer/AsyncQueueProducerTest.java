@@ -18,6 +18,7 @@ package org.apache.camel.component.sjms.producer;
 
 import javax.jms.Message;
 import javax.jms.MessageConsumer;
+import javax.jms.Session;
 import javax.jms.TextMessage;
 
 import org.apache.camel.CamelContext;
@@ -25,13 +26,14 @@ import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.component.mock.MockEndpoint;
 import org.apache.camel.component.sjms.SjmsComponent;
 import org.apache.camel.component.sjms.SjmsComponentConfiguration;
+import org.apache.camel.component.sjms.jms.JmsObjectFactory;
 import org.apache.camel.component.sjms.support.JmsTestSupport;
 
 import org.junit.Test;
 
 public class AsyncQueueProducerTest extends JmsTestSupport {
     
-    private static final String TEST_DESTINATION_NAME = "test.foo";
+    private static final String TEST_DESTINATION_NAME = "async.queue.producer.test";
     
     public AsyncQueueProducerTest() {
 	}
@@ -40,17 +42,37 @@ public class AsyncQueueProducerTest extends JmsTestSupport {
         return false;
     }
 
+    @Override
+    public void setUp() throws Exception {
+        super.setUp();
+        
+        setConnection(connectionFactory.createConnection());
+        getConnection().start();
+        setSession(getConnection().createSession(false, Session.AUTO_ACKNOWLEDGE));
+    }
+
+    @Override
+    public void tearDown() throws Exception {
+        super.tearDown();
+        if (getConnection() != null) {
+            getConnection().stop();
+        }
+        if (getSession() != null) {
+            getSession().close();
+        }
+    }
+
     @Test
     public void testAsynchronousQueueProducer() throws Exception {
-        MessageConsumer mc = createConsumer(TEST_DESTINATION_NAME);
+        MessageConsumer mc = JmsObjectFactory.createQueueConsumer(getSession(), TEST_DESTINATION_NAME);
         assertNotNull(mc);
         final String expectedBody = "Hello World!";
-        MockEndpoint mock = getMockEndpoint("mock:result");
+        MockEndpoint mock = getMockEndpoint("mock:" + TEST_DESTINATION_NAME + ".mock.result");
 
         mock.expectedMessageCount(1);
         mock.expectedBodiesReceived(expectedBody);
 
-        template.sendBody("direct:start", expectedBody);
+        template.sendBody("direct:" + TEST_DESTINATION_NAME + ".start", expectedBody);
         Message message = mc.receive(5000);
         assertNotNull(message);
         assertTrue(message instanceof TextMessage);
@@ -59,7 +81,7 @@ public class AsyncQueueProducerTest extends JmsTestSupport {
         String text = tm.getText();
         assertNotNull(text);
         
-        template.sendBody("direct:finish", text);
+        template.sendBody("direct:" + TEST_DESTINATION_NAME + ".finish", text);
         
         mock.assertIsSatisfied();
         mc.close();
@@ -97,11 +119,12 @@ public class AsyncQueueProducerTest extends JmsTestSupport {
         return new RouteBuilder() {
             public void configure() {
                 
-                from("direct:start")
-                    .to("sjms:queue:" + TEST_DESTINATION_NAME + "?asyncProducer=true");
+                from("direct:" + TEST_DESTINATION_NAME + ".start")
+                    .to("sjms:queue:" + TEST_DESTINATION_NAME + "?synchronous=false");
                 
-                from("direct:finish")
-                    .to("log:test.log.1?showBody=true", "mock:result");
+                from("direct:" + TEST_DESTINATION_NAME + ".finish")
+//                    .to("log:test.log.1?showBody=true")
+                    .to("mock:" + TEST_DESTINATION_NAME + ".mock.result");
             }
         };
     }

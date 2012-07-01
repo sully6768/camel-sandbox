@@ -38,7 +38,7 @@ public class AsyncJmsProducerTest extends CamelTestSupport {
     private static String route = "";
 
     @Test
-    public void testAsyncEndpoint() throws Exception {
+    public void testAsyncJmsProducerEndpoint() throws Exception {
         getMockEndpoint("mock:before").expectedBodiesReceived("Hello Camel");
         getMockEndpoint("mock:after").expectedBodiesReceived("Bye Camel");
         getMockEndpoint("mock:result").expectedBodiesReceived("Bye Camel");
@@ -88,7 +88,7 @@ public class AsyncJmsProducerTest extends CamelTestSupport {
                                 afterThreadName = Thread.currentThread().getName();
                             }
                         })
-                        .to("sjms:queue:foo?asyncProducer=false");
+                        .to("sjms:queue:foo?synchronous=false");
 
                 from("sjms:queue:foo")
                         .to("mock:after")
