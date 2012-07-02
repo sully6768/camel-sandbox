@@ -28,6 +28,7 @@ import org.apache.camel.component.sjms.jms.SessionAcknowledgementType;
 import org.apache.camel.component.sjms.pool.ConnectionPool;
 import org.apache.camel.component.sjms.pool.SessionPool;
 import org.apache.camel.component.sjms.producer.DestinationProducer;
+import org.apache.camel.component.sjms.producer.InOutProducer;
 import org.apache.camel.impl.DefaultEndpoint;
 
 import org.slf4j.Logger;
@@ -50,6 +51,8 @@ public class SjmsEndpoint extends DefaultEndpoint implements MultipleConsumersSu
     private String namedReplyTo;
     private int acknowledgementMode = Session.AUTO_ACKNOWLEDGE;
     private boolean topic = false;
+    private int producerCount = 1;
+    private int consumerCount = 1;
 
     public SjmsEndpoint() {
         setExchangePattern(ExchangePattern.InOnly);
@@ -75,7 +78,7 @@ public class SjmsEndpoint extends DefaultEndpoint implements MultipleConsumersSu
     protected void doStart() throws Exception {
         super.doStart();
         
-        // Start with some paramater validation and overridding
+        // Start with some parameter validation and overriding
         // First check for 
         
         // We always use a connection pool, even for a pool of 1
@@ -106,7 +109,12 @@ public class SjmsEndpoint extends DefaultEndpoint implements MultipleConsumersSu
 
     @Override
     public Producer createProducer() throws Exception {
-        SjmsProducer producer = new DestinationProducer(this);
+        SjmsProducer producer = null;
+        if (this.getExchangePattern().equals(ExchangePattern.InOnly)) {
+            producer = new DestinationProducer(this);
+        } else if (this.getExchangePattern().equals(ExchangePattern.InOut)) {
+            producer = new InOutProducer(this);
+        }
         return producer;
     }
 
@@ -190,20 +198,6 @@ public class SjmsEndpoint extends DefaultEndpoint implements MultipleConsumersSu
      */
     public SessionPool getSessions() {
         return sessions;
-    }
-
-    /**
-     * @return
-     */
-    public int getProducerCount() {
-        return getConfiguration().getMaxProducers();
-    }
-
-    /**
-     * @return
-     */
-    public int getConsumerCount() {
-        return getConfiguration().getMaxConsumers();
     }
 
     /**
@@ -363,5 +357,41 @@ public class SjmsEndpoint extends DefaultEndpoint implements MultipleConsumersSu
      */
     public boolean isTopic() {
         return topic;
+    }
+
+    /**
+     * Sets the int value of producerCount for this instance of SjmsEndpoint.
+     *
+     * @param producerCount Sets int, default is TODO add default
+     */
+    public void setProducerCount(int producerCount) {
+        this.producerCount = producerCount;
+    }
+
+    /**
+     * Gets the int value of producerCount for this instance of SjmsEndpoint.
+     *
+     * @return the producerCount
+     */
+    public int getProducerCount() {
+        return producerCount;
+    }
+
+    /**
+     * Sets the int value of consumerCount for this instance of SjmsEndpoint.
+     *
+     * @param consumerCount Sets int, default is TODO add default
+     */
+    public void setConsumerCount(int consumerCount) {
+        this.consumerCount = consumerCount;
+    }
+
+    /**
+     * Gets the int value of consumerCount for this instance of SjmsEndpoint.
+     *
+     * @return the consumerCount
+     */
+    public int getConsumerCount() {
+        return consumerCount;
     }
 }

@@ -27,8 +27,20 @@ import org.apache.camel.util.ObjectHelper;
  */
 public class JmsObjectFactory {
 
+    public static Destination createQueue(Session session, String destinationName) throws Exception {
+        return session.createQueue(destinationName);
+    }
+
+    public static Destination createTopic(Session session, String destinationName) throws Exception {
+        return session.createTopic(destinationName);
+    }
+
     public static MessageConsumer createQueueConsumer(Session session, String destinationName) throws Exception {
         return createMessageConsumer(session, destinationName, null, false, null, true);
+    }
+
+    public static MessageConsumer createQueueConsumer(Session session, String destinationName, String messageSelector) throws Exception {
+        return createMessageConsumer(session, destinationName, messageSelector, false, null, true);
     }
 
     public static MessageConsumer createTopicConsumer(Session session, String destinationName) throws Exception {

@@ -27,8 +27,8 @@ import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.Set;
 import java.util.Map.Entry;
+import java.util.Set;
 
 import javax.jms.BytesMessage;
 import javax.jms.DeliveryMode;
@@ -40,9 +40,12 @@ import javax.jms.ObjectMessage;
 import javax.jms.Session;
 import javax.jms.TextMessage;
 
+import org.apache.camel.Endpoint;
 import org.apache.camel.Exchange;
 import org.apache.camel.RuntimeCamelException;
 import org.apache.camel.component.sjms.jms.JmsMessageHeaderType;
+import org.apache.camel.impl.DefaultMessage;
+import org.apache.camel.spi.Synchronization;
 import org.apache.camel.util.ExchangeHelper;
 import org.apache.camel.util.ObjectHelper;
 
@@ -59,6 +62,85 @@ public final class JmsMessageHelper {
     private static final Logger LOGGER = LoggerFactory.getLogger(JmsMessageHelper.class);
 
     private JmsMessageHelper() {
+    }
+    
+    public static Exchange createExchange(Message message, Endpoint endpoint) {
+        Exchange exchange = endpoint.createExchange();
+        return populateExchange(message, exchange, false);
+    }
+    
+    @SuppressWarnings("unchecked")
+    public static Exchange populateExchange(Message message, Exchange exchange,
+            boolean out) {
+        exchange.addOnCompletion(new Synchronization() {
+
+            @Override
+            public void onFailure(Exchange exchange) {
+                LOGGER.info("ONFAILURE: {}", exchange.toString());
+
+            }
+
+            @Override
+            public void onComplete(Exchange exchange) {
+                LOGGER.info("ONCOMPLETION: {}", exchange.toString());
+            }
+        });
+        try {
+            JmsMessageHelper.setJmsMessageHeaders(message, exchange, out);
+            if (message != null) {
+                // convert to JMS Message of the given type
+
+                DefaultMessage bodyMessage = null;
+                if (out) {
+                    bodyMessage = (DefaultMessage) exchange.getOut();
+                } else {
+                    bodyMessage = (DefaultMessage) exchange.getIn();
+                }
+                switch (JmsMessageHelper.discoverType(message)) {
+                case Bytes:
+                    BytesMessage bytesMessage = (BytesMessage) message;
+                    if (bytesMessage.getBodyLength() > Integer.MAX_VALUE) {
+                        LOGGER.warn("Length of BytesMessage is too long: {}", bytesMessage.getBodyLength());
+                        return null;
+                    }
+                    byte[] result = new byte[(int) bytesMessage.getBodyLength()];
+                    bytesMessage.readBytes(result);
+                    bodyMessage.setHeader(JMS_MESSAGE_TYPE, JmsMessageType.Bytes);
+                    bodyMessage.setBody(result);
+                    break;
+                case Map:
+                    HashMap<String, Object> body = new HashMap<String, Object>();
+                    MapMessage mapMessage = (MapMessage) message;
+                    Enumeration<String> names = mapMessage.getMapNames();
+                    while (names.hasMoreElements()) {
+                        String key = names.nextElement();
+                        Object value = mapMessage.getObject(key);
+                        body.put(key, value);
+                    }
+                    bodyMessage.setHeader(JMS_MESSAGE_TYPE, JmsMessageType.Map);
+                    bodyMessage.setBody(body);
+                    break;
+                case Object:
+                    ObjectMessage objMsg = (ObjectMessage) message;
+                    bodyMessage.setHeader(JMS_MESSAGE_TYPE, JmsMessageType.Object);
+                    bodyMessage.setBody(objMsg.getObject());
+                    break;
+                case Text:
+                    TextMessage textMsg = (TextMessage) message;
+                    bodyMessage.setHeader(JMS_MESSAGE_TYPE, JmsMessageType.Text);
+                    bodyMessage.setBody(textMsg.getText());
+                    break;
+                case Message:
+                default:
+                    // Do nothing. Only set the headers for an empty message
+                    bodyMessage.setBody(message);
+                    break;
+                }
+            }
+        } catch (Exception e) {
+            exchange.setException(e);
+        }
+        return exchange;
     }
 
     /**
@@ -166,7 +248,9 @@ public final class JmsMessageHelper {
         try {
             message.setJMSCorrelationID(correlationId);
         } catch (JMSException e) {
-            // ignore
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("Error setting the correlationId: {}", correlationId);
+            }
         }
     }
 
@@ -199,7 +283,9 @@ public final class JmsMessageHelper {
         try {
             message.setJMSReplyTo(replyTo);
         } catch (Exception e) {
-            // ignore due OracleAQ does not support accessing JMSReplyTo
+            if (LOGGER.isDebugEnabled()) {
+                LOGGER.debug("Error setting the correlationId: {}", replyTo.toString());
+            }
         }
     }
 
@@ -372,7 +458,7 @@ public final class JmsMessageHelper {
     }
 
     @SuppressWarnings("unchecked")
-    public static Exchange setJmsMessageHeaders(final Message jmsMessage, final Exchange exchange)
+    public static Exchange setJmsMessageHeaders(final Message jmsMessage, final Exchange exchange, boolean out)
             throws JMSException {
         HashMap<String, Object> headers = new HashMap<String, Object>();
         if (jmsMessage != null) {
@@ -426,7 +512,11 @@ public final class JmsMessageHelper {
                 headers.put(key, value);
             }
         }
-        exchange.getIn().setHeaders(headers);
+        if (out) {
+            exchange.getOut().setHeaders(headers);
+        } else {
+            exchange.getIn().setHeaders(headers);
+        }
         return exchange;
     }
     

@@ -16,7 +16,10 @@
  */
 package org.apache.camel.component.sjms.producer;
 
-import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 
 import javax.jms.JMSException;
 import javax.jms.Message;
@@ -26,8 +29,7 @@ import javax.jms.MessageProducer;
 import javax.jms.TextMessage;
 
 import org.apache.camel.CamelContext;
-import org.apache.camel.Exchange;
-import org.apache.camel.Processor;
+import org.apache.camel.CamelExecutionException;
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.component.sjms.SjmsComponent;
 import org.apache.camel.component.sjms.SjmsComponentConfiguration;
@@ -36,55 +38,81 @@ import org.apache.camel.component.sjms.support.JmsTestSupport;
 
 import org.junit.Test;
 
-public class InOutQueueProducerTest extends JmsTestSupport {
+public class InOutQueueProducerLoadTest extends JmsTestSupport {
     
     private static final String TEST_DESTINATION_NAME = "in.out.queue.producer.test";
-    
-    public InOutQueueProducerTest() {
+    private MessageConsumer mc;
+    public InOutQueueProducerLoadTest() {
 	}
     
     @Override
     protected boolean useJmx() {
     	return false;
     }
-
-    @Test
-    public void testInOutQueueProducer() throws Exception {
-        MessageConsumer mc = JmsObjectFactory.createQueueConsumer(getSession(), TEST_DESTINATION_NAME + ".request");
-        assertNotNull(mc);
-        final String requestText = "Hello World!";
-        final String responseText = "How are you";
-        mc.setMessageListener(new MyMessageListener(requestText, responseText));
-        Object responseObject = template.requestBody("direct:start", requestText);
-        assertNotNull(responseObject);
-        assertTrue(responseObject instanceof String);
-        assertEquals(responseText, responseObject);
+    
+    @Override
+    public void setUp() throws Exception {
+        super.setUp();
+        mc = JmsObjectFactory.createQueueConsumer(getSession(), TEST_DESTINATION_NAME + ".request");
+        mc.setMessageListener(new MyMessageListener());
+    }
+    
+    @Override
+    public void tearDown() throws Exception {
         mc.close();
-
+        super.tearDown();
     }
 
     @Test
-    public void testInOutQueueProducerWithCorrelationId() throws Exception {
-        MessageConsumer mc = JmsObjectFactory.createQueueConsumer(getSession(), TEST_DESTINATION_NAME + ".request");
-        assertNotNull(mc);
-        final String requestText = "Hello World!";
-        final String responseText = "How are you";
-        mc.setMessageListener(new MyMessageListener(requestText, responseText));
-        final String correlationId = UUID.randomUUID().toString().replace("-", "");
-        Exchange exchange = template.request("direct:start", new Processor() {
-            
-            @Override
-            public void process(Exchange exchange) throws Exception {
-                exchange.getOut().setBody(requestText);
-                exchange.getOut().setHeader("JMSCorrelationID", correlationId);
-            }
-        });
-        assertNotNull(exchange);
-        assertTrue(exchange.getIn().getBody() instanceof String);
-        assertEquals(responseText, exchange.getIn().getBody());
-        assertEquals(correlationId, exchange.getIn().getHeader("JMSCorrelationID", String.class));
-        mc.close();
+    public void testInOutQueueProducer() throws Exception {
+//        final String requestText = "Hello World!";
+//        final String responseText = "How are you";
 
+//        ConcurrentHashMap<String, Future<String>> correlationMap = new ConcurrentHashMap<String, Future<String>>();
+
+        ExecutorService executor = Executors.newFixedThreadPool(5);
+
+
+        for (int i = 1; i <= 5000; i++) {
+            final int tempI = i;
+            Runnable worker = new Runnable() {
+                
+                @Override
+                public void run() {
+                    try {
+                        final String requestText = "Message " + tempI;
+                        final String responseText = "Response Message " + tempI;
+//                    Future<String> future = template.asyncRequestBody("direct:start", requestText, String.class);
+//                    String response = future.get();
+                        String response = template.requestBody("direct:start", requestText, String.class);
+                        assertNotNull(response);
+                        assertEquals(responseText, response);
+                    } catch (Exception e) {
+                        log.error("TODO Auto-generated catch block", e);
+                    }                   
+                }
+            };
+            executor.execute(worker);
+        }
+        while(context.getInflightRepository().size() > 0){
+            
+        }
+        executor.shutdown();
+        while (!executor.isTerminated()) {
+//
+        }
+        
+//        for (int i = 0; i < 1000; i++) {
+//            assertNotNull(mc);
+//        }
+        mc.close();
+        
+//        for (String responseText : correlationMap.keySet()) {
+//            Future<String> future = correlationMap.get(responseText);
+//            String response = future.get(5000, TimeUnit.MILLISECONDS);
+//            assertNotNull(response);
+//            assertEquals(responseText, response);
+//        }
     }
     
     /*
@@ -98,8 +126,6 @@ public class InOutQueueProducerTest extends JmsTestSupport {
         CamelContext camelContext = super.createCamelContext();
         SjmsComponentConfiguration config = new SjmsComponentConfiguration();
         config.setMaxConnections(1);
-        config.setMaxSessions(1);
-        config.setMaxProducers(1);
         SjmsComponent component = new SjmsComponent();
         component.setConfiguration(config);
         component.setConnectionFactory(connectionFactory);
@@ -118,39 +144,26 @@ public class InOutQueueProducerTest extends JmsTestSupport {
         return new RouteBuilder() {
             public void configure() {
                 from("direct:start")
-                    .to("log:" + TEST_DESTINATION_NAME + ".in.log.1?showBody=true")
-                    .inOut("sjms:queue:" + TEST_DESTINATION_NAME + ".request" + "?namedReplyTo=" + TEST_DESTINATION_NAME + ".response")
-                    .to("log:" + TEST_DESTINATION_NAME + ".out.log.1?showBody=true");
+                    .to("log:" + TEST_DESTINATION_NAME + ".in.log?showBody=true")
+                    .inOut("sjms:queue:" + TEST_DESTINATION_NAME + ".request" + "?namedReplyTo=" + TEST_DESTINATION_NAME + ".response&consumerCount=10&producerCount=20&synchronous=false")
+                    .to("log:" + TEST_DESTINATION_NAME + ".out.log?showBody=true");
             }
         };
     }
     
     protected class MyMessageListener implements MessageListener {
-        private String requestText;
-        private String responseText;
-        
-        /**
-         * TODO Add Constructor Javadoc
-         *
-         * @param request
-         * @param response
-         */
-        public MyMessageListener(String request, String response) {
+        public MyMessageListener() {
             super();
-            this.requestText = request;
-            this.responseText = response;
         }
         
         @Override
         public void onMessage(Message message) {
             try {
                 TextMessage request = (TextMessage) message;
-                assertNotNull(request);
                 String text = request.getText();
-                assertEquals(requestText, text);
                 
                 TextMessage response = getSession().createTextMessage();
-                response.setText(responseText);
+                response.setText("Response " + text);
                 response.setJMSCorrelationID(request.getJMSCorrelationID());
                 MessageProducer mp = getSession().createProducer(message.getJMSReplyTo());
                 mp.send(response);

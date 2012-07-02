@@ -13,22 +13,18 @@
  */
 package org.apache.camel.component.sjms;
 
-import java.util.concurrent.Exchanger;
-
 import javax.jms.Message;
-import javax.jms.MessageListener;
 
 import org.apache.camel.component.sjms.pool.ConnectionPool;
-import org.apache.camel.component.sjms.pool.SessionPool;
 
 /**
- * TODO Add Class documentation for SjmsMessageConsumer
+ * TODO Add Class documentation for SjmsMessageProducer
  *
  * @author sully6768
  */
-public interface SjmsMessageConsumer extends MessageListener {
-    void handleMessage(Message message);
-    SjmsMessageConsumer createMessageConsumer(ConnectionPool connectionPool, String destinationName) throws Exception;
-    SjmsMessageConsumer createMessageConsumerListener(SessionPool sessionPool, String destinationName, Exchanger<Object> exchanger) throws Exception;
-    void destroyMessageConsumer() throws Exception;
+public interface SjmsMessageProducer {
+    void send(Message message) throws Exception;
+    SjmsMessageProducer createMessageProducer(ConnectionPool connectionPool, String destinationName) throws Exception;
+    void destroyMessageProducer() throws Exception;
+    
 }
