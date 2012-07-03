@@ -151,8 +151,6 @@ public class TransactedQueueProducerTest extends JmsTestSupport {
         CamelContext camelContext = super.createCamelContext();
         SjmsComponentConfiguration config = new SjmsComponentConfiguration();
         config.setMaxConnections(1);
-        config.setMaxSessions(1);
-        config.setMaxProducers(1);
         SjmsComponent component = new SjmsComponent();
         component.setConfiguration(config);
         component.setConnectionFactory(connectionFactory);

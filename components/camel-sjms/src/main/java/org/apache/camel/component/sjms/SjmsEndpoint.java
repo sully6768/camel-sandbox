@@ -48,8 +48,9 @@ public class SjmsEndpoint extends DefaultEndpoint implements MultipleConsumersSu
     private boolean synchronous = true;
     private boolean transacted = false;
     private String namedReplyTo;
-    private int acknowledgementMode = Session.AUTO_ACKNOWLEDGE;
+    private SessionAcknowledgementType acknowledgementMode = SessionAcknowledgementType.AUTO_ACKNOWLEDGE;
     private boolean topic = false;
+    private int sessionCount = 1;
     private int producerCount = 1;
     private int consumerCount = 1;
     private long ttl = -1;
@@ -71,7 +72,7 @@ public class SjmsEndpoint extends DefaultEndpoint implements MultipleConsumersSu
             throw new RuntimeCamelException("Endpoint URI unsupported: " + uri);
         }
         if (isTransacted()) {
-            setAcknowledgementMode(Session.SESSION_TRANSACTED);
+            setAcknowledgementMode(SessionAcknowledgementType.SESSION_TRANSACTED);
         }
         setConfiguration(((SjmsComponent)component).getConfiguration());
     }
@@ -88,14 +89,18 @@ public class SjmsEndpoint extends DefaultEndpoint implements MultipleConsumersSu
                 .getMaxConnections(), getConfiguration().getConnectionFactory());
         connections.fillPool();
         
+        //
+        // TODO since we only need a session pool for one use case, find a better way
+        //
         // We only create a session pool when we are not transacted.
         // Transacted listeners or producers need to be paired with the
         // Session that created them.
         if( ! isTransacted()) {
-            sessions = new SessionPool(getConfiguration()
-                    .getMaxSessions(), getConnections());
+            sessions = new SessionPool(getSessionCount(), getConnections());
+            
+            // TODO fix the string hack
             sessions.setAcknowledgeMode(SessionAcknowledgementType
-                    .valueOf(getConfiguration().getAcknowledgementMode()));
+                    .valueOf(getAcknowledgementMode()+""));
             getSessions().fillPool();
         }
     }
@@ -204,11 +209,11 @@ public class SjmsEndpoint extends DefaultEndpoint implements MultipleConsumersSu
         return namedReplyTo;
     }
 
-    public void setAcknowledgementMode(int acknowledgementMode) {
+    public void setAcknowledgementMode(SessionAcknowledgementType acknowledgementMode) {
         this.acknowledgementMode = acknowledgementMode;
     }
 
-    public int getAcknowledgementMode() {
+    public SessionAcknowledgementType getAcknowledgementMode() {
         return acknowledgementMode;
     }
 
@@ -258,5 +263,13 @@ public class SjmsEndpoint extends DefaultEndpoint implements MultipleConsumersSu
 
     public void setDurableSubscription(String durableSubscription) {
         this.durableSubscription = durableSubscription;
+    }
+
+    public int getSessionCount() {
+        return sessionCount;
+    }
+
+    public void setSessionCount(int sessionCount) {
+        this.sessionCount = sessionCount;
     }
 }

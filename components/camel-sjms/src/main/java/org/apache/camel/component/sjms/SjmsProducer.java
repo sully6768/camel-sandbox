@@ -202,7 +202,7 @@ public abstract class SjmsProducer extends DefaultAsyncProducer  {
      * @return the acknowledgment mode
      */
     public int getAcknowledgeMode() {
-        return getSjmsEndpoint().getAcknowledgementMode();
+        return getSjmsEndpoint().getAcknowledgementMode().intValue();
     }
 
     /**

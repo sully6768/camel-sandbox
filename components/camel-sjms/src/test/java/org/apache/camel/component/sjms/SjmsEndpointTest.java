@@ -137,9 +137,6 @@ public class SjmsEndpointTest extends CamelTestSupport {
                 "vm://broker?broker.persistent=false&broker.useJmx=false");
         SjmsComponentConfiguration config = new SjmsComponentConfiguration();
         config.setMaxConnections(3);
-        config.setMaxSessions(5);
-        config.setMaxConsumers(10);
-        config.setMaxProducers(2);
         SjmsComponent component = new SjmsComponent();
         component.setConfiguration(config);
         component.setConnectionFactory(connectionFactory);
