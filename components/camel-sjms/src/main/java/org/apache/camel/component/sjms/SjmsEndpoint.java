@@ -27,7 +27,7 @@ import org.apache.camel.component.sjms.consumer.TransactedQueueListenerConsumer;
 import org.apache.camel.component.sjms.jms.SessionAcknowledgementType;
 import org.apache.camel.component.sjms.pool.ConnectionPool;
 import org.apache.camel.component.sjms.pool.SessionPool;
-import org.apache.camel.component.sjms.producer.DestinationProducer;
+import org.apache.camel.component.sjms.producer.InOnlyProducer;
 import org.apache.camel.component.sjms.producer.InOutProducer;
 import org.apache.camel.impl.DefaultEndpoint;
 
@@ -111,7 +111,7 @@ public class SjmsEndpoint extends DefaultEndpoint implements MultipleConsumersSu
     public Producer createProducer() throws Exception {
         SjmsProducer producer = null;
         if (this.getExchangePattern().equals(ExchangePattern.InOnly)) {
-            producer = new DestinationProducer(this);
+            producer = new InOnlyProducer(this);
         } else if (this.getExchangePattern().equals(ExchangePattern.InOut)) {
             producer = new InOutProducer(this);
         }
