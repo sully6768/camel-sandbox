@@ -13,24 +13,15 @@
  */
 package org.apache.camel.component.sjms;
 
-import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 
-import javax.jms.JMSException;
 import javax.jms.MessageProducer;
 import javax.jms.Session;
 
-import org.apache.camel.AsyncCallback;
 import org.apache.camel.Endpoint;
-import org.apache.camel.Exchange;
-import org.apache.camel.ExchangePattern;
-import org.apache.camel.RuntimeCamelException;
 import org.apache.camel.component.sjms.pool.ConnectionPool;
 import org.apache.camel.component.sjms.pool.ObjectPool;
 import org.apache.camel.impl.DefaultAsyncProducer;
-import org.apache.camel.spi.Synchronization;
 
 /**
  * TODO Add Class documentation for SjmsProducer
