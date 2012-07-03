@@ -30,7 +30,7 @@ import org.junit.Test;
 /**
  * @version 
  */
-public class AsyncJmsProducerTest extends CamelTestSupport {
+public class AsyncQueueProducerTest extends CamelTestSupport {
 
     private static String beforeThreadName;
     private static String afterThreadName;
