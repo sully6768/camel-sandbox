@@ -26,7 +26,6 @@ import javax.jms.MessageListener;
 import javax.jms.MessageProducer;
 import javax.jms.Session;
 
-import org.apache.camel.AsyncCallback;
 import org.apache.camel.Exchange;
 import org.apache.camel.RuntimeCamelException;
 import org.apache.camel.component.sjms.JmsMessageHelper;
@@ -49,14 +48,14 @@ public class InOutProducer extends SjmsProducer {
      *
      * @author sully6768
      */
-    protected class InOutReplyListenerPool extends ObjectPool<MessageConsumerModel>{
+    protected class MessageConsumerPool extends ObjectPool<MessageConsumerModel>{
 
         /**
          * TODO Add Constructor Javadoc
          *
          * @param poolSize
          */
-        public InOutReplyListenerPool(int poolSize) {
+        public MessageConsumerPool(int poolSize) {
             super(poolSize);
         }
 
@@ -142,9 +141,8 @@ public class InOutProducer extends SjmsProducer {
         }
     }
     
-    private InOutReplyListenerPool listnerPool;
+    private MessageConsumerPool consumers;
     private long timeout = 30000;
-    private InOutMessageProducerPool producerPool;
     
     public InOutProducer(SjmsEndpoint endpoint) {
         super(endpoint);
@@ -153,25 +151,19 @@ public class InOutProducer extends SjmsProducer {
     
     @Override
     protected void doStart() throws Exception {
-        if (listnerPool == null) {
-            listnerPool = new InOutReplyListenerPool(getConsumerCount());
-            listnerPool.fillPool();
+        if (getConsumers() == null) {
+            setConsumers(new MessageConsumerPool(getConsumerCount()));
+            getConsumers().fillPool();
         }
-        if (producerPool == null) {
-            producerPool = new InOutMessageProducerPool(getConnectionPool(), getDestinationName(), getProducerCount());
-            producerPool.fillPool();
-        }
+        super.doStart();
     }
     
     @Override
     protected void doStop() throws Exception {
-        if (listnerPool != null) {
-            listnerPool.drainPool();
-            listnerPool = null;
-        }
-        if (producerPool == null) {
-            producerPool.drainPool();
-            producerPool = null;
+        super.doStop();
+        if (getConsumers() != null) {
+            getConsumers().drainPool();
+            setConsumers(null);
         }
     }
     
@@ -184,58 +176,15 @@ public class InOutProducer extends SjmsProducer {
         return new MessageProducerModel(session, messageProducer);
     }
     
-    @Override
-    public boolean process(final Exchange exchange, final AsyncCallback callback) {
-        if(log.isDebugEnabled()) {
-            log.debug("Processing InOut Exchange id:{}", exchange.getExchangeId());
-        }
-        try {
-            if( ! isSyncronous()) {
-                if(log.isDebugEnabled()) {
-                    log.debug("  Sending message asynchronously for Exchange id:{}", exchange.getExchangeId());
-                }
-                getExecutor().execute(new Runnable() {
-                    
-                    @Override
-                    public void run() {
-                        try {
-                            sendMessage(exchange);
-                            // Execute the call back
-                            callback.done(isSyncronous());
-                        } catch (Exception e) {
-                            ObjectHelper.wrapRuntimeCamelException(e);
-                        }
-                        
-                    }
-                });
-            } else {
-                if(log.isDebugEnabled()) {
-                    log.debug("  Sending message synchronously for Exchange id:{}", exchange.getExchangeId());
-                }
-                sendMessage(exchange);
-                callback.done(isSyncronous());
-            }
-        } catch (Exception e) {
-            if(log.isDebugEnabled()) {
-                log.debug("Processing InOut Exchange id:{}", exchange.getExchangeId() + " - Failed");
-            }
-            exchange.setException(e);
-        }
-        if(log.isDebugEnabled()) {
-            log.debug("Processing InOut Exchange id:{}", exchange.getExchangeId() + " - SUCCESS");
-        }
-        return isSyncronous();
-    }
-    
-    private void sendMessage(final Exchange exchange) throws Exception {
-        if (producerPool != null) {
-            final InOutMessageProducer model = producerPool.borrowObject();
+    public void sendMessage(final Exchange exchange) throws Exception {
+        if (getProducers() != null) {
+            final MessageProducerModel producer = getProducers().borrowObject();
 
             if (isEndpointTransacted()) {
-                exchange.addOnCompletion(new ProducerSynchronization(model.getSession()));
+                exchange.addOnCompletion(new ProducerSynchronization(producer.getSession()));
             }
             
-            Message request = JmsMessageHelper.createMessage(exchange, model.getSession());
+            Message request = JmsMessageHelper.createMessage(exchange, producer.getSession());
             Exchanger<Object> messageExchanger = new Exchanger<Object>();
             String correlationId = null;
             if(exchange.getIn().getHeader("JMSCorrelationID", String.class) == null) {
@@ -246,12 +195,12 @@ public class InOutProducer extends SjmsProducer {
             
             JmsMessageHelper.setCorrelationId(request, correlationId);
             exchangerMap.put(request.getJMSCorrelationID(), messageExchanger);
-            Destination replyToDestination = JmsObjectFactory.createQueue(model.getSession(), getNamedReplyTo());
+            Destination replyToDestination = JmsObjectFactory.createQueue(producer.getSession(), getNamedReplyTo());
             JmsMessageHelper.setJMSReplyTo(request, replyToDestination);
-            model.send(request);
+            producer.getMessageProducer().send(request);
             
             Object responseObject = messageExchanger.exchange(null, timeout, TimeUnit.MILLISECONDS);
-            producerPool.returnObject(model);
+            getProducers().returnObject(producer);
             
             if (responseObject instanceof Throwable) {
                 exchange.setException((Throwable) responseObject);
@@ -262,5 +211,23 @@ public class InOutProducer extends SjmsProducer {
                 throw new RuntimeCamelException("Unknown response type: " + responseObject);
             }
         }
+    }
+
+    /**
+     * Sets the MessageConsumerPool value of consumers for this instance of InOutProducer.
+     *
+     * @param consumers Sets MessageConsumerPool, default is TODO add default
+     */
+    public void setConsumers(MessageConsumerPool consumers) {
+        this.consumers = consumers;
+    }
+
+    /**
+     * Gets the MessageConsumerPool value of consumers for this instance of InOutProducer.
+     *
+     * @return the consumers
+     */
+    public MessageConsumerPool getConsumers() {
+        return consumers;
     }
 }

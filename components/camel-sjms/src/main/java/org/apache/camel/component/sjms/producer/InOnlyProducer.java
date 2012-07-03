@@ -18,9 +18,7 @@ import javax.jms.Message;
 import javax.jms.MessageProducer;
 import javax.jms.Session;
 
-import org.apache.camel.AsyncCallback;
 import org.apache.camel.Exchange;
-import org.apache.camel.RuntimeCamelException;
 import org.apache.camel.component.sjms.JmsMessageHelper;
 import org.apache.camel.component.sjms.SjmsEndpoint;
 import org.apache.camel.component.sjms.SjmsProducer;
@@ -55,50 +53,7 @@ public class InOnlyProducer extends SjmsProducer {
     }
     
     @Override
-    public boolean process(final Exchange exchange, final AsyncCallback callback) {
-        boolean syncProcessing = false;
-        if(log.isDebugEnabled()) {
-            log.debug("Processing InOnly Exchange id:{}", exchange.getExchangeId());
-        }
-        try {
-            if( ! isSyncronous()) {
-                if(log.isDebugEnabled()) {
-                    log.debug("Sending message asynchronously for Exchange id:{}", exchange.getExchangeId());
-                }
-                getExecutor().execute(new Runnable() {
-                    
-                    @Override
-                    public void run() {
-                        try {
-                            sendMessage(exchange);
-                        } catch (Exception e) {
-                            throw new RuntimeCamelException(e);
-                        }
-                    }
-                });
-                
-            } else {
-                if(log.isDebugEnabled()) {
-                    log.debug("Sending message synchronously for Exchange id:{}", exchange.getExchangeId());
-                }
-                syncProcessing = true;
-                sendMessage(exchange);
-            }
-        } catch (Exception e) {
-            if(log.isDebugEnabled()) {
-                log.debug("Processing InOnly Exchange id:{}", exchange.getExchangeId() + " - Failed");
-            }
-            exchange.setException(e);
-        }
-        callback.done(syncProcessing);
-        if(log.isDebugEnabled()) {
-            log.debug("Processing InOnly Exchange id:{}", exchange.getExchangeId() + " - SUCCESS");
-        }
-        return syncProcessing;
-    }
-    
-
-    private void sendMessage(Exchange exchange) throws Exception {
+    public void sendMessage(Exchange exchange) throws Exception {
         if (getProducers() != null) {
             MessageProducerModel model = getProducers().borrowObject();
 

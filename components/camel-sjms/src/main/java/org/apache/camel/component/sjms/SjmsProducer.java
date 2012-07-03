@@ -18,10 +18,13 @@ import java.util.concurrent.ExecutorService;
 import javax.jms.MessageProducer;
 import javax.jms.Session;
 
+import org.apache.camel.AsyncCallback;
 import org.apache.camel.Endpoint;
+import org.apache.camel.Exchange;
 import org.apache.camel.component.sjms.pool.ConnectionPool;
 import org.apache.camel.component.sjms.pool.ObjectPool;
 import org.apache.camel.impl.DefaultAsyncProducer;
+import org.apache.camel.util.ObjectHelper;
 
 /**
  * TODO Add Class documentation for SjmsProducer
@@ -140,6 +143,50 @@ public abstract class SjmsProducer extends DefaultAsyncProducer  {
     }
     
     public abstract MessageProducerModel doCreateProducerModel() throws Exception;
+    
+    public abstract void sendMessage(Exchange exchange) throws Exception;
+    
+    @Override
+    public boolean process(final Exchange exchange, final AsyncCallback callback) {
+        if(log.isDebugEnabled()) {
+            log.debug("Processing Exchange.id:{}", exchange.getExchangeId());
+        }
+        try {
+            if( ! isSyncronous()) {
+                if(log.isDebugEnabled()) {
+                    log.debug("  Sending message asynchronously for Exchange id:{}", exchange.getExchangeId());
+                }
+                getExecutor().execute(new Runnable() {
+                    @Override
+                    public void run() {
+                        try {
+                            sendMessage(exchange);
+                            // Execute the call back
+                            callback.done(isSyncronous());
+                        } catch (Exception e) {
+                            ObjectHelper.wrapRuntimeCamelException(e);
+                        }
+                        
+                    }
+                });
+            } else {
+                if(log.isDebugEnabled()) {
+                    log.debug("  Sending message synchronously for Exchange id:{}", exchange.getExchangeId());
+                }
+                sendMessage(exchange);
+                callback.done(isSyncronous());
+            }
+        } catch (Exception e) {
+            if(log.isDebugEnabled()) {
+                log.debug("Processing Exchange.id:{}", exchange.getExchangeId() + " - FAILED");
+            }
+            exchange.setException(e);
+        }
+        if(log.isDebugEnabled()) {
+            log.debug("Processing Exchange.id:{}", exchange.getExchangeId() + " - SUCCESS");
+        }
+        return isSyncronous();
+    }
 
     protected SjmsEndpoint getSjmsEndpoint() {
         return (SjmsEndpoint)this.getEndpoint();

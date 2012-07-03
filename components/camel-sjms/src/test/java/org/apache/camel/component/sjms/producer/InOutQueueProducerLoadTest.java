@@ -18,8 +18,6 @@ package org.apache.camel.component.sjms.producer;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
 
 import javax.jms.JMSException;
 import javax.jms.Message;
@@ -29,7 +27,6 @@ import javax.jms.MessageProducer;
 import javax.jms.TextMessage;
 
 import org.apache.camel.CamelContext;
-import org.apache.camel.CamelExecutionException;
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.component.sjms.SjmsComponent;
 import org.apache.camel.component.sjms.SjmsComponentConfiguration;
@@ -101,18 +98,7 @@ public class InOutQueueProducerLoadTest extends JmsTestSupport {
         while (!executor.isTerminated()) {
 //
         }
-        
-//        for (int i = 0; i < 1000; i++) {
-//            assertNotNull(mc);
-//        }
         mc.close();
-        
-//        for (String responseText : correlationMap.keySet()) {
-//            Future<String> future = correlationMap.get(responseText);
-//            String response = future.get(5000, TimeUnit.MILLISECONDS);
-//            assertNotNull(response);
-//            assertEquals(responseText, response);
-//        }
     }
     
     /*
@@ -145,7 +131,7 @@ public class InOutQueueProducerLoadTest extends JmsTestSupport {
             public void configure() {
                 from("direct:start")
                     .to("log:" + TEST_DESTINATION_NAME + ".in.log?showBody=true")
-                    .inOut("sjms:queue:" + TEST_DESTINATION_NAME + ".request" + "?namedReplyTo=" + TEST_DESTINATION_NAME + ".response&consumerCount=10&producerCount=20&synchronous=false")
+                    .inOut("sjms:queue:" + TEST_DESTINATION_NAME + ".request" + "?namedReplyTo=" + TEST_DESTINATION_NAME + ".response&consumerCount=5&producerCount=10&synchronous=false")
                     .to("log:" + TEST_DESTINATION_NAME + ".out.log?showBody=true");
             }
         };
