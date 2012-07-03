@@ -53,6 +53,9 @@ public class SjmsEndpoint extends DefaultEndpoint implements MultipleConsumersSu
     private boolean topic = false;
     private int producerCount = 1;
     private int consumerCount = 1;
+    private long ttl = -1;
+    private boolean persistent = true;
+    private String durableSubscription;
 
     public SjmsEndpoint() {
         setExchangePattern(ExchangePattern.InOnly);
@@ -393,5 +396,59 @@ public class SjmsEndpoint extends DefaultEndpoint implements MultipleConsumersSu
      */
     public int getConsumerCount() {
         return consumerCount;
+    }
+
+    /**
+     * Gets the long value of ttl for this instance of SjmsEndpoint.
+     *
+     * @return the ttl
+     */
+    public long getTtl() {
+        return ttl;
+    }
+
+    /**
+     * Sets the long value of ttl for this instance of SjmsEndpoint.
+     *
+     * @param ttl Sets long, default is TODO add default
+     */
+    public void setTtl(long ttl) {
+        this.ttl = ttl;
+    }
+
+    /**
+     * Gets the boolean value of persistent for this instance of SjmsEndpoint.
+     *
+     * @return the persistent
+     */
+    public boolean isPersistent() {
+        return persistent;
+    }
+
+    /**
+     * Sets the boolean value of persistent for this instance of SjmsEndpoint.
+     *
+     * @param persistent Sets boolean, default is TODO add default
+     */
+    public void setPersistent(boolean persistent) {
+        this.persistent = persistent;
+    }
+
+    /**
+     * Gets the String value of durableSubscription for this instance of SjmsEndpoint.
+     *
+     * @return the durableSubscription
+     */
+    public String getDurableSubscription() {
+        return durableSubscription;
+    }
+
+    /**
+     * Sets the String value of durableSubscription for this instance of SjmsEndpoint.
+     *
+     * @param durableSubscription Sets String, default is TODO add default
+     */
+    public void setDurableSubscription(String durableSubscription) {
+        this.durableSubscription = durableSubscription;
     }
 }

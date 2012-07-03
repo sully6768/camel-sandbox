@@ -104,33 +104,4 @@ public class AsyncJmsProducerTest extends CamelTestSupport {
             }
         };
     }
-//
-//    @Override
-//    protected RouteBuilder createRouteBuilder() throws Exception {
-//        return new RouteBuilder() {
-//            @Override
-//            public void configure() throws Exception {
-//                from("direct:start")
-//                        .to("mock:before")
-//                        .to("log:before")
-//                        .process(new Processor() {
-//                            public void process(Exchange exchange) throws Exception {
-//                                beforeThreadName = Thread.currentThread().getName();
-//                            }
-//                        })
-//                        .to("sjms:queue:foo?asyncProducer=true")
-//                        .process(new Processor() {
-//                            public void process(Exchange exchange) throws Exception {
-//                                afterThreadName = Thread.currentThread().getName();
-//                            }
-//                        })
-//                        .to("log:after")
-//                        .to("mock:after")
-//                        .to("mock:result");
-//
-//                from("sjms:queue:foo")
-//                    .transform(constant("Bye Camel"));
-//            }
-//        };
-//    }
 }
