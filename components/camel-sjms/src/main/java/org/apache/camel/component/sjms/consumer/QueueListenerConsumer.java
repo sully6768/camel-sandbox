@@ -13,19 +13,20 @@
  */
 package org.apache.camel.component.sjms.consumer;
 
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 
+import javax.jms.Connection;
 import javax.jms.MessageConsumer;
-import javax.jms.Queue;
-import javax.jms.QueueSession;
+import javax.jms.MessageListener;
 import javax.jms.Session;
 
 import org.apache.camel.ExchangePattern;
 import org.apache.camel.Processor;
-import org.apache.camel.component.sjms.SjmsMessageConsumer;
 import org.apache.camel.component.sjms.SjmsEndpoint;
-import org.apache.camel.component.sjms.messagehandlers.InOnlyMessageHandler;
+import org.apache.camel.component.sjms.jms.JmsObjectFactory;
 import org.apache.camel.component.sjms.pool.ObjectPool;
+import org.apache.camel.component.sjms.tx.SessionTransactionSynchronization;
 
 /**
  * A non-transacted queue consumer for a given JMS Destination
@@ -34,8 +35,9 @@ import org.apache.camel.component.sjms.pool.ObjectPool;
 public class QueueListenerConsumer extends QueueConsumer {
 
     private AtomicBoolean stopped = new AtomicBoolean(false);
-
     protected MessageConsumerPool consumers;
+    private final ExecutorService executor;
+    
     
     protected class MessageConsumerPool extends ObjectPool<MessageConsumerModel>{
 
@@ -50,7 +52,13 @@ public class QueueListenerConsumer extends QueueConsumer {
 
         @Override
         protected MessageConsumerModel createObject() throws Exception {
-            return createConsumer();
+            MessageConsumerModel model = null;
+            if (isEndpointTransacted() || getSjmsEndpoint().getExchangePattern().equals(ExchangePattern.InOut)) {
+                model = createConsumerWithDedicatedSession();
+            } else {
+                model = createConsumerListener();
+            }
+            return model;
         }
         
         @Override
@@ -87,6 +95,18 @@ public class QueueListenerConsumer extends QueueConsumer {
          * @param session
          * @param messageProducer
          */
+        public MessageConsumerModel(MessageConsumer messageConsumer) {
+            super();
+            this.session = null;
+            this.messageConsumer = messageConsumer;
+        }
+
+        /**
+         * TODO Add Constructor Javadoc
+         * 
+         * @param session
+         * @param messageProducer
+         */
         public MessageConsumerModel(Session session, MessageConsumer messageConsumer) {
             super();
             this.session = session;
@@ -116,6 +136,7 @@ public class QueueListenerConsumer extends QueueConsumer {
     
     public QueueListenerConsumer(SjmsEndpoint endpoint, Processor processor) {
         super(endpoint, processor);
+        this.executor = endpoint.getCamelContext().getExecutorServiceManager().newDefaultThreadPool(this, "SjmsConsumer");
     }
 
     @Override
@@ -146,20 +167,40 @@ public class QueueListenerConsumer extends QueueConsumer {
         super.doSuspend();
     }
     
-    private MessageConsumerModel createConsumer() throws Exception {
-        return doCreateConsumer();
+    private MessageConsumerModel createConsumerWithDedicatedSession() throws Exception {
+        Connection conn = getConnectionPool().borrowObject();
+        Session session = null;
+        if (isEndpointTransacted()) {
+            session = conn.createSession(true, Session.SESSION_TRANSACTED);
+        } else {
+            session = conn.createSession(false, Session.AUTO_ACKNOWLEDGE);
+        }
+        MessageConsumer messageConsumer = null;
+        if (isTopic()) {
+            messageConsumer = JmsObjectFactory.createTopicConsumer(session, getDestinationName());    
+        } else {
+            messageConsumer = JmsObjectFactory.createQueueConsumer(session, getDestinationName());
+        }
+        MessageListener handler = createMessageHandler(session);
+        messageConsumer.setMessageListener(handler);
+        getConnectionPool().returnObject(conn);
+        return new MessageConsumerModel(session, messageConsumer);
     }
     
-    protected MessageConsumerModel doCreateConsumer() throws Exception {
-        QueueSession queueSession = (QueueSession) getSessionPool().borrowObject();
-        Queue myQueue = queueSession.createQueue(getDestinationName());
-        MessageConsumer messageConsumer = queueSession.createReceiver(myQueue);
+    private MessageConsumerModel createConsumerListener() throws Exception {
+        Session queueSession = getSessionPool().borrowObject();
+        MessageConsumer messageConsumer = null;
+        if (isTopic()) {
+            messageConsumer = JmsObjectFactory.createTopicConsumer(queueSession, getDestinationName());    
+        } else {
+            messageConsumer = JmsObjectFactory.createQueueConsumer(queueSession, getDestinationName());
+        }
         getSessionPool().returnObject(queueSession);
         // Don't pass in the session.  Only needed if we are transacted
-        SjmsMessageConsumer handler = createMessageHandler(null);
+        MessageListener handler = createMessageHandler(null);
         messageConsumer.setMessageListener(handler);
-        return new MessageConsumerModel(null, messageConsumer);
-    }
+        return new MessageConsumerModel(messageConsumer);
+    } 
 
     /**
      * Helper factory method used to create a SjmsMessageConsumer based on the MEP
@@ -168,15 +209,31 @@ public class QueueListenerConsumer extends QueueConsumer {
      *            a session is only required if we are a transacted consumer
      * @return
      */
-    protected SjmsMessageConsumer createMessageHandler(Session session) {
-        SjmsMessageConsumer answer = null;
-        if (getQueueEndpoint().getExchangePattern().equals(ExchangePattern.InOnly) ){
-            InOnlyMessageHandler messageHandler = new InOnlyMessageHandler(getStopped());
+    protected MessageListener createMessageHandler(Session session) {
+        MessageListener answer = null;
+        if (getSjmsEndpoint().getExchangePattern().equals(ExchangePattern.InOnly)){
+            DefaultMessageHandler messageHandler = null;
+            if (isEndpointTransacted()) {
+                messageHandler = new InOnlyMessageHandler(getEndpoint(), getStopped(), executor, new SessionTransactionSynchronization(session));
+            } else {
+                messageHandler = new InOnlyMessageHandler(getEndpoint(), getStopped(), executor);
+            }
             messageHandler.setSession(session);
             messageHandler.setProcessor(getAsyncProcessor());
-            messageHandler.setEndpoint(getQueueEndpoint());
-            messageHandler.setAsync(isAsync());
-            messageHandler.setTransacted(isTransacted());
+            messageHandler.setSynchronous(isSynchronous());
+            messageHandler.setTransacted(isEndpointTransacted());
+            answer = messageHandler;
+        } else {
+            DefaultMessageHandler messageHandler = null;
+            if (isEndpointTransacted()) {
+                messageHandler = new InOutMessageHandler(getEndpoint(), getStopped(), executor, new SessionTransactionSynchronization(session));
+            } else {
+                messageHandler = new InOutMessageHandler(getEndpoint(), getStopped(), executor);
+            }
+            messageHandler.setSession(session);
+            messageHandler.setProcessor(getAsyncProcessor());
+            messageHandler.setSynchronous(isSynchronous());
+            messageHandler.setTransacted(isEndpointTransacted());
             answer = messageHandler;
         }
         return answer;

@@ -30,7 +30,7 @@ import org.junit.Test;
 /**
  * @version 
  */
-public class AsyncQueueProducerTest extends CamelTestSupport {
+public class AsyncTopicProducerTest extends CamelTestSupport {
 
     private static String beforeThreadName;
     private static String afterThreadName;
@@ -38,7 +38,7 @@ public class AsyncQueueProducerTest extends CamelTestSupport {
     private static String route = "";
 
     @Test
-    public void testAsyncJmsProducerEndpoint() throws Exception {
+    public void testAsyncTopicProducer() throws Exception {
         getMockEndpoint("mock:before").expectedBodiesReceived("Hello Camel");
         getMockEndpoint("mock:after").expectedBodiesReceived("Bye Camel");
         getMockEndpoint("mock:result").expectedBodiesReceived("Bye Camel");
@@ -89,9 +89,9 @@ public class AsyncQueueProducerTest extends CamelTestSupport {
                                 afterThreadName = Thread.currentThread().getName();
                             }
                         })
-                        .to("sjms:queue:foo?synchronous=false");
+                        .to("sjms:topic:foo?synchronous=false");
 
-                from("sjms:queue:foo")
+                from("sjms:topic:foo")
                         .to("mock:after")
                         .to("log:after")
                         .delay(1000)

@@ -41,61 +41,36 @@ public abstract class QueueConsumer extends DefaultConsumer {
         super(endpoint, processor);
     }
 
-    protected SjmsEndpoint getQueueEndpoint() {
+    protected SjmsEndpoint getSjmsEndpoint() {
         return (SjmsEndpoint)this.getEndpoint();
     }
     
     protected ConnectionPool getConnectionPool() {
-        return getQueueEndpoint().getConnections();
+        return getSjmsEndpoint().getConnections();
     }
     
     protected SessionPool getSessionPool() {
-        return getQueueEndpoint().getSessions();
+        return getSjmsEndpoint().getSessions();
     }
 
-    /**
-     * Gets the boolean value of transacted for this instance of DestinationProducer.
-     *
-     * @return the transacted
-     */
-    public boolean isTransacted() {
-        return getQueueEndpoint().isTransacted();
+    public boolean isEndpointTransacted() {
+        return getSjmsEndpoint().isTransacted();
     }
 
-    /**
-     * Gets the boolean value of async for this instance of DestinationProducer.
-     *
-     * @return the async
-     */
-    public boolean isAsync() {
-        return getQueueEndpoint().isSynchronous();
+    public boolean isSynchronous() {
+        return getSjmsEndpoint().isSynchronous();
     }
 
-    /**
-     * Gets the String value of replyTo for this instance of DestinationProducer.
-     *
-     * @return the replyTo
-     */
-    public String getReplyTo() {
-        return getQueueEndpoint().getNamedReplyTo();
-    }
-
-    /**
-     * Gets the String value of destinationName for this instance of DestinationProducer.
-     *
-     * @return the destinationName
-     */
     public String getDestinationName() {
-        return getQueueEndpoint().getDestinationName();
+        return getSjmsEndpoint().getDestinationName();
     }
 
-    /**
-     * Gets the int value of maxProducers for this instance of DestinationProducer.
-     *
-     * @return the maxProducers
-     */
     public int getConsumerCount() {
-        return getQueueEndpoint().getConsumerCount();
+        return getSjmsEndpoint().getConsumerCount();
+    }
+    
+    public boolean isTopic() {
+        return getSjmsEndpoint().isTopic();
     }
 
     /**

@@ -33,6 +33,7 @@ import org.apache.camel.component.sjms.SjmsEndpoint;
 import org.apache.camel.component.sjms.SjmsProducer;
 import org.apache.camel.component.sjms.jms.JmsObjectFactory;
 import org.apache.camel.component.sjms.pool.ObjectPool;
+import org.apache.camel.component.sjms.tx.SessionTransactionSynchronization;
 import org.apache.camel.util.ObjectHelper;
 
 /**
@@ -68,6 +69,8 @@ public class InOutProducer extends SjmsProducer {
 
                 @Override
                 public void onMessage(Message message) {
+                    logger.info("Message Received in the Consumer Pool");
+                    logger.info("  Message : {}", message);
                     try {
                         Exchanger<Object> exchanger = exchangerMap.get(message.getJMSCorrelationID());
                         exchanger.exchange(message, timeout, TimeUnit.MILLISECONDS);
@@ -106,18 +109,18 @@ public class InOutProducer extends SjmsProducer {
      */
     protected class MessageConsumerModel {
         private final Session session;
-        private final MessageConsumer messageProducer;
+        private final MessageConsumer messageConsumer;
 
         /**
          * TODO Add Constructor Javadoc
          * 
          * @param session
-         * @param messageProducer
+         * @param messageConsumer
          */
-        public MessageConsumerModel(Session session, MessageConsumer messageProducer) {
+        public MessageConsumerModel(Session session, MessageConsumer messageConsumer) {
             super();
             this.session = session;
-            this.messageProducer = messageProducer;
+            this.messageConsumer = messageConsumer;
         }
 
         /**
@@ -137,12 +140,12 @@ public class InOutProducer extends SjmsProducer {
          * @return the queueSender
          */
         public MessageConsumer getMessageConsumer() {
-            return messageProducer;
+            return messageConsumer;
         }
     }
     
     private MessageConsumerPool consumers;
-    private long timeout = 30000;
+    private long timeout = 300000;
     
     public InOutProducer(SjmsEndpoint endpoint) {
         super(endpoint);
@@ -181,7 +184,7 @@ public class InOutProducer extends SjmsProducer {
             final MessageProducerModel producer = getProducers().borrowObject();
 
             if (isEndpointTransacted()) {
-                exchange.addOnCompletion(new ProducerSynchronization(producer.getSession()));
+                exchange.getUnitOfWork().addSynchronization(new SessionTransactionSynchronization(producer.getSession()));
             }
             
             Message request = JmsMessageHelper.createMessage(exchange, producer.getSession());

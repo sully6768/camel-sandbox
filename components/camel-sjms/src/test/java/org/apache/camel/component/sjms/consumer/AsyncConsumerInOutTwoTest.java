@@ -56,7 +56,7 @@ public class AsyncConsumerInOutTwoTest extends CamelTestSupport {
             @Override
             public void configure() throws Exception {
                 // enable async in only mode on the consumer
-                from("sjms:queue:start?asyncConsumer=true")
+                from("sjms:queue:start?synchronous=false&?exchangePattern=InOut")
                     .to("async:camel?delay=2000")
                     .transform(constant("Bye World"));
             }

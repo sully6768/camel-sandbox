@@ -98,7 +98,7 @@ public class AsyncJmsInOutTest extends CamelTestSupport {
                     .inOut("sjms:queue:bar?transacted=true")
                     .to("mock:result");
 
-                from("sjms:queue:bar?asyncConsumer=true&transacted=true")
+                from("sjms:queue:bar?synchronous=false&transacted=true")
                     .log("Using ${threadName} to process ${body}")
                     // we can only process at fastest the 100 msg in 5 sec due the delay
                     .delay(50)

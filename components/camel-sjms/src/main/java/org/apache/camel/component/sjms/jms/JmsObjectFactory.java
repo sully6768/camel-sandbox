@@ -13,6 +13,7 @@
  */
 package org.apache.camel.component.sjms.jms;
 
+import javax.jms.DeliveryMode;
 import javax.jms.Destination;
 import javax.jms.MessageConsumer;
 import javax.jms.MessageProducer;
@@ -83,19 +84,21 @@ public class JmsObjectFactory {
     public static MessageProducer createQueueProducer(
             Session session, 
             String destinationName) throws Exception {
-        return createMessageProducer(session, destinationName, false);
+        return createMessageProducer(session, destinationName, false, true, -1);
     }
     
     public static MessageProducer createTopicProducer(
             Session session, 
             String destinationName) throws Exception {
-        return createMessageProducer(session, destinationName, true);
+        return createMessageProducer(session, destinationName, true, false, -1);
     }
     
     public static MessageProducer createMessageProducer(
             Session session, 
             String destinationName, 
-            boolean topic) throws Exception {
+            boolean topic,
+            boolean persitent,
+            long ttl) throws Exception {
         MessageProducer messageProducer = null;
         Destination destination = null;
         if (topic) {
@@ -105,6 +108,15 @@ public class JmsObjectFactory {
             destination = session.createQueue(destinationName);
         }
         messageProducer = session.createProducer(destination);
+
+        if(persitent) {
+            messageProducer.setDeliveryMode(DeliveryMode.PERSISTENT);   
+        } else {
+            messageProducer.setDeliveryMode(DeliveryMode.NON_PERSISTENT);
+        }
+        if(ttl > 0) {
+            messageProducer.setTimeToLive(ttl);
+        }
         return messageProducer;
     }
 }

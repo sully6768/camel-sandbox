@@ -11,7 +11,7 @@
  *    See the License for the specific language governing permissions and
  *    limitations under the License.
  */
-package org.apache.camel.component.sjms.producer;
+package org.apache.camel.component.sjms.tx;
 
 import javax.jms.JMSException;
 import javax.jms.Session;
@@ -23,15 +23,15 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 /**
- * TODO Add Class documentation for ProducerSynchronization
+ * TODO Add Class documentation for SessionTransactionSynchronization
  *
  * @author sully6768
  */
-public class ProducerSynchronization implements Synchronization {
+public class SessionTransactionSynchronization implements Synchronization {
     private Logger log = LoggerFactory.getLogger(getClass());
     private Session session;
     
-    public ProducerSynchronization(Session session) {
+    public SessionTransactionSynchronization(Session session) {
         this.session = session;
     }
     

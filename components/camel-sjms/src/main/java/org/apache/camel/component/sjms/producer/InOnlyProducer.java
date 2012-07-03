@@ -23,6 +23,7 @@ import org.apache.camel.component.sjms.JmsMessageHelper;
 import org.apache.camel.component.sjms.SjmsEndpoint;
 import org.apache.camel.component.sjms.SjmsProducer;
 import org.apache.camel.component.sjms.jms.JmsObjectFactory;
+import org.apache.camel.component.sjms.tx.SessionTransactionSynchronization;
 
 /**
  * TODO Add Class documentation for QueueConsumer
@@ -44,7 +45,8 @@ public class InOnlyProducer extends SjmsProducer {
         }
         MessageProducer messageProducer = null;
         if(isTopic()) {
-            messageProducer = JmsObjectFactory.createTopicProducer(session, getDestinationName());
+//            messageProducer = JmsObjectFactory.createTopicProducer(session, getDestinationName());
+            messageProducer = JmsObjectFactory.createMessageProducer(session, getDestinationName(), isTopic(), isPersistent(), getTtl());
         } else {
             messageProducer = JmsObjectFactory.createQueueProducer(session, getDestinationName());
         }
@@ -55,14 +57,15 @@ public class InOnlyProducer extends SjmsProducer {
     @Override
     public void sendMessage(Exchange exchange) throws Exception {
         if (getProducers() != null) {
-            MessageProducerModel model = getProducers().borrowObject();
-
+            MessageProducerModel producer = getProducers().borrowObject();
+            
             if (isEndpointTransacted()) {
-                exchange.addOnCompletion(new ProducerSynchronization(model.getSession()));
+                exchange.getUnitOfWork().addSynchronization(new SessionTransactionSynchronization(producer.getSession()));
             }
             
-            Message message = JmsMessageHelper.createMessage(exchange, model.getSession());
-            model.getMessageProducer().send(message);
+            Message message = JmsMessageHelper.createMessage(exchange, producer.getSession());
+            producer.getMessageProducer().send(message);
+            getProducers().returnObject(producer);
         }
     }
 }

@@ -40,7 +40,7 @@ public class AsyncConsumerTest extends CamelTestSupport {
 
         template.sendBody("sjms:queue:start", "Hello Camel");
         template.sendBody("sjms:queue:start", "Hello World");
-//        Thread.sleep(2000);
+        //        Thread.sleep(2000);
 
         assertMockEndpointsSatisfied();
     }
@@ -65,7 +65,7 @@ public class AsyncConsumerTest extends CamelTestSupport {
             @Override
             public void configure() throws Exception {
                 // enable async in only mode on the consumer
-                from("sjms:queue:start?asyncConsumer=true")
+                from("sjms:queue:start?synchronous=false")
                         .choice()
                             .when(body().contains("Camel"))
                             .to("async:camel?delay=2000")

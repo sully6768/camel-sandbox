@@ -16,60 +16,70 @@
  */
 package org.apache.camel.component.sjms.consumer;
 
-import org.apache.activemq.ActiveMQConnectionFactory;
 import org.apache.camel.CamelContext;
 import org.apache.camel.builder.RouteBuilder;
+import org.apache.camel.component.mock.MockEndpoint;
 import org.apache.camel.component.sjms.SjmsComponent;
-import org.apache.camel.test.junit4.CamelTestSupport;
+import org.apache.camel.component.sjms.SjmsComponentConfiguration;
+import org.apache.camel.component.sjms.support.JmsTestSupport;
 
 import org.junit.Test;
 
-public class QueueConsumerInOnlyTest extends CamelTestSupport {
+public class InOnlyQueueConsumerTest extends JmsTestSupport {
     
-    public QueueConsumerInOnlyTest() {
-    	enableJMX();
-	}
+    private static final String TEST_DESTINATION_NAME = "sjms:queue:in.only.queue.consumer.test";
     
     @Override
     protected boolean useJmx() {
-    	return true;
+    	return false;
     }
 
     @Test
-    public void testRepeatedHelloWorld() throws Exception {
-        getMockEndpoint("mock:test.done").expectedBodiesReceived("Hello World");
+    public void testInOnlyQueueProducer() throws Exception {
+        final String expectedBody = "Hello World";
+        MockEndpoint mock = getMockEndpoint("mock:test.done");
 
-        template.sendBody("sjms:queue:test.queue", "World");
+        mock.expectedMessageCount(1);
+        mock.expectedBodiesReceived(expectedBody);
 
-        assertMockEndpointsSatisfied();
+        template.sendBody(TEST_DESTINATION_NAME, "World");
+        
+        mock.assertIsSatisfied();
+
     }
     
+    /*
+     * @see org.apache.camel.test.junit4.CamelTestSupport#createCamelContext()
+     *
+     * @return
+     * @throws Exception
+     */
     @Override
-    protected void doPreSetup() throws Exception {
-    	super.doPreSetup();
-    }
-
     protected CamelContext createCamelContext() throws Exception {
         CamelContext camelContext = super.createCamelContext();
-
-        ActiveMQConnectionFactory connectionFactory = new ActiveMQConnectionFactory(
-                "vm://broker?broker.persistent=false&broker.useJmx=false");
+        SjmsComponentConfiguration config = new SjmsComponentConfiguration();
+        config.setMaxConnections(1);
         SjmsComponent component = new SjmsComponent();
+        component.setConfiguration(config);
         component.setConnectionFactory(connectionFactory);
         camelContext.addComponent("sjms", component);
-
         return camelContext;
     }
 
+    /*
+     * @see org.apache.camel.test.junit4.CamelTestSupport#createRouteBuilder()
+     *
+     * @return
+     * @throws Exception
+     */
     @Override
     protected RouteBuilder createRouteBuilder() throws Exception {
         return new RouteBuilder() {
             public void configure() {
 
-                from("sjms:queue:test.queue")
+                from(TEST_DESTINATION_NAME)
                     .transform(body().prepend("Hello "))
                     .to("log:test?showAll=true", "mock:test.done");
-
             }
         };
     }

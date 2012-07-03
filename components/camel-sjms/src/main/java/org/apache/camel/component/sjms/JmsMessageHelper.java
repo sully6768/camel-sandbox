@@ -77,7 +77,6 @@ public final class JmsMessageHelper {
             @Override
             public void onFailure(Exchange exchange) {
                 LOGGER.info("ONFAILURE: {}", exchange.toString());
-
             }
 
             @Override
@@ -520,12 +519,19 @@ public final class JmsMessageHelper {
         return exchange;
     }
     
-
+    public static Message createMessage(Exchange exchange, Session session) throws Exception {
+        return createMessage(exchange, session, false);
+    }
     
     @SuppressWarnings("unchecked")
-    public static Message createMessage(Exchange exchange, Session session) throws Exception {
+    public static Message createMessage(Exchange exchange, Session session, boolean out) throws Exception {
         Message answer = null;
-        Object body = exchange.getIn().getBody();
+        Object body = null;
+        if (out) {
+            body = exchange.getOut().getBody();
+        } else {
+            body = exchange.getIn().getBody();
+        }
         JmsMessageType messageType = JmsMessageHelper.discoverType(exchange);
 
         switch (messageType) {

@@ -76,11 +76,12 @@ public class SjmsEndpointTest extends CamelTestSupport {
     }
 
     @Test
-    public void testRobustInOnlyMessageExchangePattern() throws Exception {
+    public void testDefaultExchangePattern() throws Exception {
         try {
-            Endpoint sjms = context.getEndpoint("sjms:queue:test?messageExchangePattern=" + ExchangePattern.RobustInOnly);
+            SjmsEndpoint sjms = (SjmsEndpoint) context.getEndpoint("sjms:queue:test");
             assertNotNull(sjms);
-            assertTrue(sjms.createExchange().getPattern().equals(ExchangePattern.RobustInOnly));
+            assertEquals(ExchangePattern.InOnly, sjms.getExchangePattern());
+//            assertTrue(sjms.createExchange().getPattern().equals(ExchangePattern.InOnly));
         } catch (Exception e) {
             fail("Exception thrown: " + e.getLocalizedMessage());
         }
@@ -89,7 +90,7 @@ public class SjmsEndpointTest extends CamelTestSupport {
     @Test
     public void testInOnlyExchangePattern() throws Exception {
         try {
-            Endpoint sjms = context.getEndpoint("sjms:queue:test?messageExchangePattern=" + ExchangePattern.InOnly);
+            Endpoint sjms = context.getEndpoint("sjms:queue:test?exchangePattern=" + ExchangePattern.InOnly);
             assertNotNull(sjms);
             assertTrue(sjms.createExchange().getPattern().equals(ExchangePattern.InOnly));
         } catch (Exception e) {
@@ -100,7 +101,7 @@ public class SjmsEndpointTest extends CamelTestSupport {
     @Test
     public void testInOutExchangePattern() throws Exception {
         try {
-            Endpoint sjms = context.getEndpoint("sjms:queue:test?messageExchangePattern=" + ExchangePattern.InOut);
+            Endpoint sjms = context.getEndpoint("sjms:queue:test?exchangePattern=" + ExchangePattern.InOut);
             assertNotNull(sjms);
             assertTrue(sjms.createExchange().getPattern().equals(ExchangePattern.InOut));
         } catch (Exception e) {
@@ -116,7 +117,7 @@ public class SjmsEndpointTest extends CamelTestSupport {
     @Test
     public void testNamedReplyToAndMEPMatch() throws Exception {
         String namedReplyTo = "reply.to.queue";
-        Endpoint endpoint = context.getEndpoint("sjms:queue:test?namedReplyTo="+namedReplyTo+"&messageExchangePattern=" + ExchangePattern.InOut);
+        Endpoint endpoint = context.getEndpoint("sjms:queue:test?namedReplyTo="+namedReplyTo+"&exchangePattern=" + ExchangePattern.InOut);
         assertNotNull(endpoint);
         assertTrue(endpoint instanceof SjmsEndpoint);
         SjmsEndpoint qe = (SjmsEndpoint) endpoint;

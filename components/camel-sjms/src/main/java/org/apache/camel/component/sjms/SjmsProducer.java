@@ -152,7 +152,7 @@ public abstract class SjmsProducer extends DefaultAsyncProducer  {
             log.debug("Processing Exchange.id:{}", exchange.getExchangeId());
         }
         try {
-            if( ! isSyncronous()) {
+            if( ! isSynchronous()) {
                 if(log.isDebugEnabled()) {
                     log.debug("  Sending message asynchronously for Exchange id:{}", exchange.getExchangeId());
                 }
@@ -162,7 +162,7 @@ public abstract class SjmsProducer extends DefaultAsyncProducer  {
                         try {
                             sendMessage(exchange);
                             // Execute the call back
-                            callback.done(isSyncronous());
+                            callback.done(isSynchronous());
                         } catch (Exception e) {
                             ObjectHelper.wrapRuntimeCamelException(e);
                         }
@@ -174,7 +174,7 @@ public abstract class SjmsProducer extends DefaultAsyncProducer  {
                     log.debug("  Sending message synchronously for Exchange id:{}", exchange.getExchangeId());
                 }
                 sendMessage(exchange);
-                callback.done(isSyncronous());
+                callback.done(isSynchronous());
             }
         } catch (Exception e) {
             if(log.isDebugEnabled()) {
@@ -185,7 +185,7 @@ public abstract class SjmsProducer extends DefaultAsyncProducer  {
         if(log.isDebugEnabled()) {
             log.debug("Processing Exchange.id:{}", exchange.getExchangeId() + " - SUCCESS");
         }
-        return isSyncronous();
+        return isSynchronous();
     }
 
     protected SjmsEndpoint getSjmsEndpoint() {
@@ -210,7 +210,7 @@ public abstract class SjmsProducer extends DefaultAsyncProducer  {
      *
      * @return true if asynchronous, otherwise it is synchronous 
      */
-    public boolean isSyncronous() {
+    public boolean isSynchronous() {
         return getSjmsEndpoint().isSynchronous();
     }
 
@@ -278,7 +278,7 @@ public abstract class SjmsProducer extends DefaultAsyncProducer  {
     }
 
     /**
-     * Gets the int value of producerCount for this instance of SjmsEndpoint.
+     * Gets the int value of producerCount for this instance of SjmsProducer.
      *
      * @return the producerCount
      */
@@ -287,7 +287,7 @@ public abstract class SjmsProducer extends DefaultAsyncProducer  {
     }
 
     /**
-     * Gets the int value of consumerCount for this instance of SjmsEndpoint.
+     * Gets the int value of consumerCount for this instance of SjmsProducer.
      *
      * @return the consumerCount
      */
@@ -302,6 +302,24 @@ public abstract class SjmsProducer extends DefaultAsyncProducer  {
      */
     public ExecutorService getExecutor() {
         return executor;
+    }
+
+    /**
+     * Gets the long value of ttl for this instance of SjmsProducer.
+     *
+     * @return the ttl
+     */
+    public long getTtl() {
+        return  getSjmsEndpoint().getTtl();
+    }
+
+    /**
+     * Gets the boolean value of persistent for this instance of SjmsProducer.
+     *
+     * @return the persistent
+     */
+    public boolean isPersistent() {
+        return  getSjmsEndpoint().isPersistent();
     }
 
 }
