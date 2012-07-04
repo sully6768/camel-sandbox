@@ -16,6 +16,7 @@ The Component Service discovery ID is 'sjms'.
 
 To Do's
 * Durable Subscriptions
+* Batch Processing (Support List of messages)
 * ITest
 * Test, Test, Test
 * Documentation
