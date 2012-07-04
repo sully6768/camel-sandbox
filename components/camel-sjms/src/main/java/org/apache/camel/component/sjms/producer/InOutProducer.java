@@ -49,7 +49,7 @@ public class InOutProducer extends SjmsProducer {
      *
      * @author sully6768
      */
-    protected class MessageConsumerPool extends ObjectPool<MessageConsumerModel>{
+    protected class MessageConsumerPool extends ObjectPool<MessageConsumerContainer>{
 
         /**
          * TODO Add Constructor Javadoc
@@ -61,7 +61,7 @@ public class InOutProducer extends SjmsProducer {
         }
 
         @Override
-        protected MessageConsumerModel createObject() throws Exception {
+        protected MessageConsumerContainer createObject() throws Exception {
             Connection conn = getConnectionPool().borrowObject();
             Session session = conn.createSession(false, getAcknowledgeMode());
             MessageConsumer messageConsumer = JmsObjectFactory.createQueueConsumer(session, getNamedReplyTo());
@@ -81,12 +81,12 @@ public class InOutProducer extends SjmsProducer {
                 }
             });
             getConnectionPool().returnObject(conn);
-            MessageConsumerModel mcm = new MessageConsumerModel(session, messageConsumer);
+            MessageConsumerContainer mcm = new MessageConsumerContainer(session, messageConsumer);
             return mcm;
         }
         
         @Override
-        protected void destroyObject(MessageConsumerModel model) throws Exception {
+        protected void destroyObject(MessageConsumerContainer model) throws Exception {
             if (model.getMessageConsumer() != null) {
                 model.getMessageConsumer().close();
             }
@@ -107,7 +107,7 @@ public class InOutProducer extends SjmsProducer {
     /**
      * TODO Add Class documentation for MessageProducerContainer
      */
-    protected class MessageConsumerModel {
+    protected class MessageConsumerContainer {
         private final Session session;
         private final MessageConsumer messageConsumer;
 
@@ -117,7 +117,7 @@ public class InOutProducer extends SjmsProducer {
          * @param session
          * @param messageConsumer
          */
-        public MessageConsumerModel(Session session, MessageConsumer messageConsumer) {
+        public MessageConsumerContainer(Session session, MessageConsumer messageConsumer) {
             super();
             this.session = session;
             this.messageConsumer = messageConsumer;
@@ -125,7 +125,7 @@ public class InOutProducer extends SjmsProducer {
 
         /**
          * Gets the Session value of session for this instance of
-         * MessageConsumerModel.
+         * MessageConsumerContainer.
          * 
          * @return the session
          */
@@ -135,7 +135,7 @@ public class InOutProducer extends SjmsProducer {
 
         /**
          * Gets the MessageConsumer value of queueSender for this instance of
-         * MessageConsumerModel.
+         * MessageConsumerContainer.
          * 
          * @return the queueSender
          */
