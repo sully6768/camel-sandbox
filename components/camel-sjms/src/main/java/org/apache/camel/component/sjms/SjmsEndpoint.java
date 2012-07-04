@@ -13,8 +13,6 @@
  */
 package org.apache.camel.component.sjms;
 
-import javax.jms.Session;
-
 import org.apache.camel.Component;
 import org.apache.camel.Consumer;
 import org.apache.camel.ExchangePattern;
@@ -22,7 +20,7 @@ import org.apache.camel.MultipleConsumersSupport;
 import org.apache.camel.Processor;
 import org.apache.camel.Producer;
 import org.apache.camel.RuntimeCamelException;
-import org.apache.camel.component.sjms.consumer.QueueListenerConsumer;
+import org.apache.camel.component.sjms.consumer.DefaultConsumer;
 import org.apache.camel.component.sjms.jms.SessionAcknowledgementType;
 import org.apache.camel.component.sjms.pool.ConnectionPool;
 import org.apache.camel.component.sjms.pool.SessionPool;
@@ -127,7 +125,7 @@ public class SjmsEndpoint extends DefaultEndpoint implements MultipleConsumersSu
 
     @Override
     public Consumer createConsumer(Processor processor) throws Exception {
-        return new QueueListenerConsumer(this, processor);
+        return new DefaultConsumer(this, processor);
     }
     
     @Override

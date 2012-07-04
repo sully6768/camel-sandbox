@@ -21,7 +21,6 @@ import org.apache.camel.Processor;
 import org.apache.camel.component.sjms.pool.ConnectionPool;
 import org.apache.camel.component.sjms.pool.SessionPool;
 import org.apache.camel.impl.DefaultConsumer;
-import org.apache.camel.util.ObjectHelper;
 
 /**
  * TODO Add Class documentation for SjmsConsumer
@@ -33,19 +32,10 @@ public class SjmsConsumer extends DefaultConsumer {
 
     public SjmsConsumer(Endpoint endpoint, Processor processor) {
         super(endpoint, processor);
-        // TODO Auto-generated constructor stub
     }
 
     protected SjmsEndpoint getSjmsEndpoint() {
         return (SjmsEndpoint)this.getEndpoint();
-    }
-
-    public boolean isDurableSubscription() {
-        return  ObjectHelper.isNotEmpty(getSjmsEndpoint().isPersistent());
-    }
-
-    public String getDurableSubscription() {
-        return  getSjmsEndpoint().getDurableSubscription();
     }
     
     protected ConnectionPool getConnectionPool() {
@@ -56,16 +46,12 @@ public class SjmsConsumer extends DefaultConsumer {
         return getSjmsEndpoint().getSessions();
     }
 
-    public boolean isTransacted() {
+    public boolean isEndpointTransacted() {
         return getSjmsEndpoint().isTransacted();
     }
 
-    public boolean isAsync() {
+    public boolean isSynchronous() {
         return getSjmsEndpoint().isSynchronous();
-    }
-
-    public String getReplyTo() {
-        return getSjmsEndpoint().getNamedReplyTo();
     }
 
     public String getDestinationName() {
@@ -75,7 +61,14 @@ public class SjmsConsumer extends DefaultConsumer {
     public int getConsumerCount() {
         return getSjmsEndpoint().getConsumerCount();
     }
+    
+    public boolean isTopic() {
+        return getSjmsEndpoint().isTopic();
+    }
 
+    /**
+     * @return
+     */
     protected String createId() {
         String answer = null;
         SecureRandom ng = new SecureRandom();

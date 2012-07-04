@@ -23,6 +23,7 @@ import javax.jms.Session;
 
 import org.apache.camel.ExchangePattern;
 import org.apache.camel.Processor;
+import org.apache.camel.component.sjms.SjmsConsumer;
 import org.apache.camel.component.sjms.SjmsEndpoint;
 import org.apache.camel.component.sjms.jms.JmsObjectFactory;
 import org.apache.camel.component.sjms.pool.ObjectPool;
@@ -32,27 +33,21 @@ import org.apache.camel.component.sjms.tx.SessionTransactionSynchronization;
  * A non-transacted queue consumer for a given JMS Destination
  *
  */
-public class QueueListenerConsumer extends QueueConsumer {
+public class DefaultConsumer extends SjmsConsumer {
 
     private AtomicBoolean stopped = new AtomicBoolean(false);
     protected MessageConsumerPool consumers;
     private final ExecutorService executor;
     
-    
-    protected class MessageConsumerPool extends ObjectPool<MessageConsumerModel>{
+    protected class MessageConsumerPool extends ObjectPool<MessageConsumerContainer>{
 
-        /**
-         * TODO Add Constructor Javadoc
-         *
-         * @param sessionPool
-         */
         public MessageConsumerPool() {
             super(getConsumerCount());
         }
 
         @Override
-        protected MessageConsumerModel createObject() throws Exception {
-            MessageConsumerModel model = null;
+        protected MessageConsumerContainer createObject() throws Exception {
+            MessageConsumerContainer model = null;
             if (isEndpointTransacted() || getSjmsEndpoint().getExchangePattern().equals(ExchangePattern.InOut)) {
                 model = createConsumerWithDedicatedSession();
             } else {
@@ -62,7 +57,7 @@ public class QueueListenerConsumer extends QueueConsumer {
         }
         
         @Override
-        protected void destroyObject(MessageConsumerModel model) throws Exception {
+        protected void destroyObject(MessageConsumerContainer model) throws Exception {
             if (model != null) {
                 if(model.getMessageConsumer() != null) {
                     if(model.getMessageConsumer().getMessageListener() != null) {
@@ -85,7 +80,7 @@ public class QueueListenerConsumer extends QueueConsumer {
         }
     }
     
-    protected class MessageConsumerModel {
+    protected class MessageConsumerContainer {
         private final Session session;
         private final MessageConsumer messageConsumer;
 
@@ -95,7 +90,7 @@ public class QueueListenerConsumer extends QueueConsumer {
          * @param session
          * @param messageProducer
          */
-        public MessageConsumerModel(MessageConsumer messageConsumer) {
+        public MessageConsumerContainer(MessageConsumer messageConsumer) {
             super();
             this.session = null;
             this.messageConsumer = messageConsumer;
@@ -107,7 +102,7 @@ public class QueueListenerConsumer extends QueueConsumer {
          * @param session
          * @param messageProducer
          */
-        public MessageConsumerModel(Session session, MessageConsumer messageConsumer) {
+        public MessageConsumerContainer(Session session, MessageConsumer messageConsumer) {
             super();
             this.session = session;
             this.messageConsumer = messageConsumer;
@@ -134,7 +129,7 @@ public class QueueListenerConsumer extends QueueConsumer {
         }
     }
     
-    public QueueListenerConsumer(SjmsEndpoint endpoint, Processor processor) {
+    public DefaultConsumer(SjmsEndpoint endpoint, Processor processor) {
         super(endpoint, processor);
         this.executor = endpoint.getCamelContext().getExecutorServiceManager().newDefaultThreadPool(this, "SjmsConsumer");
     }
@@ -167,7 +162,7 @@ public class QueueListenerConsumer extends QueueConsumer {
         super.doSuspend();
     }
     
-    private MessageConsumerModel createConsumerWithDedicatedSession() throws Exception {
+    private MessageConsumerContainer createConsumerWithDedicatedSession() throws Exception {
         Connection conn = getConnectionPool().borrowObject();
         Session session = null;
         if (isEndpointTransacted()) {
@@ -184,10 +179,10 @@ public class QueueListenerConsumer extends QueueConsumer {
         MessageListener handler = createMessageHandler(session);
         messageConsumer.setMessageListener(handler);
         getConnectionPool().returnObject(conn);
-        return new MessageConsumerModel(session, messageConsumer);
+        return new MessageConsumerContainer(session, messageConsumer);
     }
     
-    private MessageConsumerModel createConsumerListener() throws Exception {
+    private MessageConsumerContainer createConsumerListener() throws Exception {
         Session queueSession = getSessionPool().borrowObject();
         MessageConsumer messageConsumer = null;
         if (isTopic()) {
@@ -199,11 +194,11 @@ public class QueueListenerConsumer extends QueueConsumer {
         // Don't pass in the session.  Only needed if we are transacted
         MessageListener handler = createMessageHandler(null);
         messageConsumer.setMessageListener(handler);
-        return new MessageConsumerModel(messageConsumer);
+        return new MessageConsumerContainer(messageConsumer);
     } 
 
     /**
-     * Helper factory method used to create a SjmsMessageConsumer based on the MEP
+     * Helper factory method used to create a MessageListener based on the MEP
      * 
      * @param session
      *            a session is only required if we are a transacted consumer
@@ -241,7 +236,7 @@ public class QueueListenerConsumer extends QueueConsumer {
 
     /**
      * Sets the AtomicBoolean value of stopped for this instance of
-     * QueueListenerConsumer.
+     * DefaultConsumer.
      * 
      * @param stopped
      *            Sets AtomicBoolean, default is TODO add default
@@ -252,7 +247,7 @@ public class QueueListenerConsumer extends QueueConsumer {
 
     /**
      * Gets the AtomicBoolean value of stopped for this instance of
-     * QueueListenerConsumer.
+     * DefaultConsumer.
      * 
      * @return the stopped
      */
