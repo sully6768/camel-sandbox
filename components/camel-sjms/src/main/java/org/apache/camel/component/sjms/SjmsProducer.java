@@ -47,7 +47,7 @@ public abstract class SjmsProducer extends DefaultAsyncProducer  {
 
         @Override
         protected MessageProducerContainer createObject() throws Exception {
-            return createProducerModel();
+            return doCreateProducerModel();
         }
         
         @Override
@@ -133,10 +133,6 @@ public abstract class SjmsProducer extends DefaultAsyncProducer  {
             getProducers().drainPool();
             setProducers(null);   
         }
-    }
-    
-    private MessageProducerContainer createProducerModel() throws Exception {
-        return doCreateProducerModel();
     }
     
     public abstract MessageProducerContainer doCreateProducerModel() throws Exception;
