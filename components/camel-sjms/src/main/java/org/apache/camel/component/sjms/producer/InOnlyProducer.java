@@ -26,8 +26,8 @@ import org.apache.camel.component.sjms.jms.JmsObjectFactory;
 import org.apache.camel.component.sjms.tx.SessionTransactionSynchronization;
 
 /**
- * TODO Add Class documentation for QueueConsumer
- *
+ * The InOnlyProducer is responsible for publishing messages to the JMS
+ * {@link Destination} for the value specified in the destinationName field.
  */
 public class InOnlyProducer extends SjmsProducer {
     
@@ -35,7 +35,13 @@ public class InOnlyProducer extends SjmsProducer {
         super(endpoint);
     }
     
-    public MessageProducerModel doCreateProducerModel() throws Exception {
+    /*
+     * @see org.apache.camel.component.sjms.SjmsProducer#doCreateProducerModel()
+     *
+     * @return
+     * @throws Exception
+     */
+    public MessageProducerContainer doCreateProducerModel() throws Exception {
         Connection conn = getConnectionPool().borrowObject();
         Session session = null;
         if (isEndpointTransacted()) {
@@ -45,19 +51,19 @@ public class InOnlyProducer extends SjmsProducer {
         }
         MessageProducer messageProducer = null;
         if(isTopic()) {
-//            messageProducer = JmsObjectFactory.createTopicProducer(session, getDestinationName());
+            // TODO add durable logic
             messageProducer = JmsObjectFactory.createMessageProducer(session, getDestinationName(), isTopic(), isPersistent(), getTtl());
         } else {
             messageProducer = JmsObjectFactory.createQueueProducer(session, getDestinationName());
         }
         getConnectionPool().returnObject(conn);
-        return new MessageProducerModel(session, messageProducer);
+        return new MessageProducerContainer(session, messageProducer);
     }
     
     @Override
     public void sendMessage(Exchange exchange) throws Exception {
         if (getProducers() != null) {
-            MessageProducerModel producer = getProducers().borrowObject();
+            MessageProducerContainer producer = getProducers().borrowObject();
             
             if (isEndpointTransacted()) {
                 exchange.getUnitOfWork().addSynchronization(new SessionTransactionSynchronization(producer.getSession()));

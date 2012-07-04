@@ -105,7 +105,7 @@ public class InOutProducer extends SjmsProducer {
     }
     
     /**
-     * TODO Add Class documentation for MessageProducerModel
+     * TODO Add Class documentation for MessageProducerContainer
      */
     protected class MessageConsumerModel {
         private final Session session;
@@ -170,18 +170,18 @@ public class InOutProducer extends SjmsProducer {
         }
     }
     
-    public MessageProducerModel doCreateProducerModel() throws Exception {
+    public MessageProducerContainer doCreateProducerModel() throws Exception {
         Connection conn = getConnectionPool().borrowObject();
         Session session = conn.createSession(false, getAcknowledgeMode());
         MessageProducer messageProducer = null;
         messageProducer = JmsObjectFactory.createQueueProducer(session, getDestinationName());
         getConnectionPool().returnObject(conn);
-        return new MessageProducerModel(session, messageProducer);
+        return new MessageProducerContainer(session, messageProducer);
     }
     
     public void sendMessage(final Exchange exchange) throws Exception {
         if (getProducers() != null) {
-            final MessageProducerModel producer = getProducers().borrowObject();
+            final MessageProducerContainer producer = getProducers().borrowObject();
 
             if (isEndpointTransacted()) {
                 exchange.getUnitOfWork().addSynchronization(new SessionTransactionSynchronization(producer.getSession()));
