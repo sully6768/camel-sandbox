@@ -14,7 +14,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.camel.component.sjms;
+package org.apache.camel.component.sjms.jms;
 
 import static org.apache.camel.component.sjms.SjmsConstants.JMS_MESSAGE_TYPE;
 import static org.apache.camel.component.sjms.SjmsConstants.QUEUE_PREFIX;
@@ -43,7 +43,7 @@ import javax.jms.TextMessage;
 import org.apache.camel.Endpoint;
 import org.apache.camel.Exchange;
 import org.apache.camel.RuntimeCamelException;
-import org.apache.camel.component.sjms.jms.JmsMessageHeaderType;
+import org.apache.camel.component.sjms.IllegalHeaderException;
 import org.apache.camel.impl.DefaultMessage;
 import org.apache.camel.spi.Synchronization;
 import org.apache.camel.util.ExchangeHelper;

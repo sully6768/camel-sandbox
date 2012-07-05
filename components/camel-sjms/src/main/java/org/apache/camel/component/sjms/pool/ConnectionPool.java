@@ -19,7 +19,7 @@ package org.apache.camel.component.sjms.pool;
 import javax.jms.Connection;
 import javax.jms.ConnectionFactory;
 
-import org.apache.camel.component.sjms.utils.StringUtils;
+import org.apache.camel.util.ObjectHelper;
 
 /**
  * TODO Add Class documentation for ConnectionPool
@@ -67,7 +67,7 @@ public class ConnectionPool extends ObjectPool<Connection> {
             }
         }
         if(connection != null) {
-            if(StringUtils.isNotEmpty(getClientId()))
+            if(ObjectHelper.isNotEmpty(getClientId()))
                 connection.setClientID(getClientId());
             connection.start();
         }

@@ -173,7 +173,7 @@ public class SjmsEndpoint extends DefaultEndpoint implements MultipleConsumersSu
         return getConfiguration().getSjmsHeaderFilterStrategy();
     }
 
-    public JmsKeyFormatStrategy getJmsKeyFormatStrategy() {
+    public SjmsKeyFormatStrategy getJmsKeyFormatStrategy() {
         return getConfiguration().getJmsKeyFormatStrategy();
     }
 

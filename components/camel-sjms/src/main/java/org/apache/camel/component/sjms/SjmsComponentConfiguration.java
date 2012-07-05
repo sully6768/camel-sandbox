@@ -25,7 +25,7 @@ import javax.jms.ConnectionFactory;
 public class SjmsComponentConfiguration {
 
     private SjmsHeaderFilterStrategy sjmsHeaderFilterStrategy;
-    private JmsKeyFormatStrategy jmsKeyFormatStrategy;
+    private SjmsKeyFormatStrategy sjmsKeyFormatStrategy;
     private ConnectionFactory connectionFactory;
     private Integer maxConnections = 1;
 
@@ -38,13 +38,13 @@ public class SjmsComponentConfiguration {
         this.sjmsHeaderFilterStrategy = sjmsHeaderFilterStrategy;
     }
 
-    public JmsKeyFormatStrategy getJmsKeyFormatStrategy() {
-        return jmsKeyFormatStrategy;
+    public SjmsKeyFormatStrategy getJmsKeyFormatStrategy() {
+        return sjmsKeyFormatStrategy;
     }
 
     public void setJmsKeyFormatStrategy(
-            JmsKeyFormatStrategy jmsKeyFormatStrategy) {
-        this.jmsKeyFormatStrategy = jmsKeyFormatStrategy;
+            SjmsKeyFormatStrategy sjmsKeyFormatStrategy) {
+        this.sjmsKeyFormatStrategy = sjmsKeyFormatStrategy;
     }
 
     public ConnectionFactory getConnectionFactory() {

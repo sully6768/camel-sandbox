@@ -14,28 +14,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.camel.component.sjms;
+package org.apache.camel.component.sjms.jms;
 
 /**
- * Strategy for applying encoding and decoding of JMS headers so they apply to the JMS spec.
- *
- * @version 
+ * JMS constants
  */
-public interface JmsKeyFormatStrategy {
+public final class JmsConstants {
 
-    /**
-     * Encodes the key before its sent as a {@link javax.jms.Message} message.
-     *
-     * @param key  the original key
-     * @return the encoded key
-     */
-    String encodeKey(String key);
+    public static final String JMS_DESTINATION = "CamelJmsDestination";
+    public static final String JMS_DESTINATION_NAME = "CamelJmsDestinationName";
+    public static final String JMS_MESSAGE_TYPE = "CamelJmsMessageType";
+    public static final String JMS_DELIVERY_MODE = "CamelJmsDeliveryMode";
 
-    /**
-     * Decodes the key after its received from a {@link javax.jms.Message} message.
-     *
-     * @param key the encoded key
-     * @return the decoded key as the original key
-     */
-    String decodeKey(String key);
+    private JmsConstants() {
+        // utility class
+    }
+
 }

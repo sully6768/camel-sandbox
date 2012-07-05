@@ -22,9 +22,9 @@ import javax.jms.MessageProducer;
 import javax.jms.Session;
 
 import org.apache.camel.Exchange;
-import org.apache.camel.component.sjms.JmsMessageHelper;
 import org.apache.camel.component.sjms.SjmsEndpoint;
 import org.apache.camel.component.sjms.SjmsProducer;
+import org.apache.camel.component.sjms.jms.JmsMessageHelper;
 import org.apache.camel.component.sjms.jms.JmsObjectFactory;
 import org.apache.camel.component.sjms.tx.SessionTransactionSynchronization;
 

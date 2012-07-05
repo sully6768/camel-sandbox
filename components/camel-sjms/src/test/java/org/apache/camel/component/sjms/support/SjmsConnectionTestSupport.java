@@ -18,7 +18,7 @@ package org.apache.camel.component.sjms.support;
 
 import org.apache.activemq.ActiveMQConnectionFactory;
 import org.apache.activemq.broker.BrokerService;
-import org.apache.camel.component.sjms.utils.StringUtils;
+import org.apache.camel.util.ObjectHelper;
 
 import org.junit.After;
 import org.junit.AfterClass;
@@ -60,7 +60,7 @@ public abstract class SjmsConnectionTestSupport {
 
     @Before
     public void setup() throws Exception {
-        if (StringUtils.isEmpty(getConnectionUri())
+        if (ObjectHelper.isEmpty(getConnectionUri())
                 || getConnectionUri().startsWith("vm")) {
             vmTestConnectionFactory = new ActiveMQConnectionFactory(
                     VM_BROKER_CONNECT_STRING);
@@ -91,7 +91,7 @@ public abstract class SjmsConnectionTestSupport {
      */
     public ActiveMQConnectionFactory createTestConnectionFactory(String uri) {
         ActiveMQConnectionFactory cf = null;
-        if (StringUtils.isEmpty(uri)) {
+        if (ObjectHelper.isEmpty(uri)) {
             cf = new ActiveMQConnectionFactory(VM_BROKER_CONNECT_STRING);
         } else {
             cf = new ActiveMQConnectionFactory(uri);
@@ -101,7 +101,7 @@ public abstract class SjmsConnectionTestSupport {
 
     protected void createBroker() throws Exception {
         String connectString = getConnectionUri();
-        if (StringUtils.isEmpty(connectString)) {
+        if (ObjectHelper.isEmpty(connectString)) {
             connectString = TCP_BROKER_CONNECT_STRING;
         }
         brokerService = new BrokerService();

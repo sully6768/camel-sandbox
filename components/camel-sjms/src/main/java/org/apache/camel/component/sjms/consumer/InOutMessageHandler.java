@@ -28,7 +28,7 @@ import org.apache.camel.AsyncCallback;
 import org.apache.camel.Endpoint;
 import org.apache.camel.Exchange;
 import org.apache.camel.RuntimeCamelException;
-import org.apache.camel.component.sjms.JmsMessageHelper;
+import org.apache.camel.component.sjms.jms.JmsMessageHelper;
 import org.apache.camel.component.sjms.jms.JmsObjectFactory;
 import org.apache.camel.spi.Synchronization;
 import org.apache.camel.util.AsyncProcessorHelper;

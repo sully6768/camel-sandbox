@@ -30,7 +30,7 @@ import org.apache.camel.AsyncProcessor;
 import org.apache.camel.Endpoint;
 import org.apache.camel.Exchange;
 import org.apache.camel.RuntimeCamelException;
-import org.apache.camel.component.sjms.JmsMessageHelper;
+import org.apache.camel.component.sjms.jms.JmsMessageHelper;
 import org.apache.camel.component.sjms.jms.SessionAcknowledgementType;
 import org.apache.camel.impl.DefaultExchange;
 import org.apache.camel.spi.Synchronization;
