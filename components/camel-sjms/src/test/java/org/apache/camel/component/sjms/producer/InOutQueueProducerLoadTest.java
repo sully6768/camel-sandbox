@@ -38,7 +38,8 @@ import org.junit.Test;
 public class InOutQueueProducerLoadTest extends JmsTestSupport {
     
     private static final String TEST_DESTINATION_NAME = "in.out.queue.producer.test";
-    private MessageConsumer mc;
+    private MessageConsumer mc1;
+    private MessageConsumer mc2;
     public InOutQueueProducerLoadTest() {
 	}
     
@@ -50,22 +51,27 @@ public class InOutQueueProducerLoadTest extends JmsTestSupport {
     @Override
     public void setUp() throws Exception {
         super.setUp();
-        mc = JmsObjectFactory.createQueueConsumer(getSession(), TEST_DESTINATION_NAME + ".request");
-        mc.setMessageListener(new MyMessageListener());
+        mc1 = JmsObjectFactory.createQueueConsumer(getSession(), TEST_DESTINATION_NAME + ".request");
+        mc2 = JmsObjectFactory.createQueueConsumer(getSession(), TEST_DESTINATION_NAME + ".request");
+        mc1.setMessageListener(new MyMessageListener());
+        mc2.setMessageListener(new MyMessageListener());
     }
     
     @Override
     public void tearDown() throws Exception {
-        mc.close();
+        mc1.close();
+        mc2.close();
         super.tearDown();
     }
 
+	/**
+	 * Test to verify that when using the consumer listener for the InOut
+	 * producer we get the correct message back.
+	 * 
+	 * @throws Exception
+	 */
     @Test
     public void testInOutQueueProducer() throws Exception {
-//        final String requestText = "Hello World!";
-//        final String responseText = "How are you";
-
-//        ConcurrentHashMap<String, Future<String>> correlationMap = new ConcurrentHashMap<String, Future<String>>();
 
         ExecutorService executor = Executors.newFixedThreadPool(5);
 
@@ -79,8 +85,6 @@ public class InOutQueueProducerLoadTest extends JmsTestSupport {
                     try {
                         final String requestText = "Message " + tempI;
                         final String responseText = "Response Message " + tempI;
-//                    Future<String> future = template.asyncRequestBody("direct:start", requestText, String.class);
-//                    String response = future.get();
                         String response = template.requestBody("direct:start", requestText, String.class);
                         assertNotNull(response);
                         assertEquals(responseText, response);
@@ -98,7 +102,6 @@ public class InOutQueueProducerLoadTest extends JmsTestSupport {
         while (!executor.isTerminated()) {
 //
         }
-        mc.close();
     }
     
     /*
@@ -131,7 +134,7 @@ public class InOutQueueProducerLoadTest extends JmsTestSupport {
             public void configure() {
                 from("direct:start")
                     .to("log:" + TEST_DESTINATION_NAME + ".in.log?showBody=true")
-                    .inOut("sjms:queue:" + TEST_DESTINATION_NAME + ".request" + "?namedReplyTo=" + TEST_DESTINATION_NAME + ".response&consumerCount=5&producerCount=10&synchronous=false")
+                    .inOut("sjms:queue:" + TEST_DESTINATION_NAME + ".request" + "?namedReplyTo=" + TEST_DESTINATION_NAME + ".response&consumerCount=2&producerCount=4&synchronous=false")
                     .to("log:" + TEST_DESTINATION_NAME + ".out.log?showBody=true");
             }
         };

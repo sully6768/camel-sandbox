@@ -44,15 +44,15 @@ public class DefaultConsumer extends SjmsConsumer {
     private final ExecutorService executor;
 
     protected class MessageConsumerPool extends
-            ObjectPool<MessageConsumerContainer> {
+            ObjectPool<MessageConsumerResources> {
 
         public MessageConsumerPool() {
             super(getConsumerCount());
         }
 
         @Override
-        protected MessageConsumerContainer createObject() throws Exception {
-            MessageConsumerContainer model = null;
+        protected MessageConsumerResources createObject() throws Exception {
+            MessageConsumerResources model = null;
             if (isEndpointTransacted()
                     || getSjmsEndpoint().getExchangePattern().equals(
                             ExchangePattern.InOut)) {
@@ -64,7 +64,7 @@ public class DefaultConsumer extends SjmsConsumer {
         }
 
         @Override
-        protected void destroyObject(MessageConsumerContainer model)
+        protected void destroyObject(MessageConsumerResources model)
                 throws Exception {
             if (model != null) {
                 if (model.getMessageConsumer() != null) {
@@ -88,7 +88,7 @@ public class DefaultConsumer extends SjmsConsumer {
         }
     }
 
-    protected class MessageConsumerContainer {
+    protected class MessageConsumerResources {
         private final Session session;
         private final MessageConsumer messageConsumer;
 
@@ -98,7 +98,7 @@ public class DefaultConsumer extends SjmsConsumer {
          * @param session
          * @param messageProducer
          */
-        public MessageConsumerContainer(MessageConsumer messageConsumer) {
+        public MessageConsumerResources(MessageConsumer messageConsumer) {
             super();
             this.session = null;
             this.messageConsumer = messageConsumer;
@@ -110,7 +110,7 @@ public class DefaultConsumer extends SjmsConsumer {
          * @param session
          * @param messageProducer
          */
-        public MessageConsumerContainer(Session session,
+        public MessageConsumerResources(Session session,
                 MessageConsumer messageConsumer) {
             super();
             this.session = session;
@@ -172,7 +172,7 @@ public class DefaultConsumer extends SjmsConsumer {
         super.doSuspend();
     }
 
-    private MessageConsumerContainer createConsumerWithDedicatedSession()
+    private MessageConsumerResources createConsumerWithDedicatedSession()
             throws Exception {
         Connection conn = getConnectionPool().borrowObject();
         Session session = null;
@@ -192,10 +192,10 @@ public class DefaultConsumer extends SjmsConsumer {
         MessageListener handler = createMessageHandler(session);
         messageConsumer.setMessageListener(handler);
         getConnectionPool().returnObject(conn);
-        return new MessageConsumerContainer(session, messageConsumer);
+        return new MessageConsumerResources(session, messageConsumer);
     }
 
-    private MessageConsumerContainer createConsumerListener() throws Exception {
+    private MessageConsumerResources createConsumerListener() throws Exception {
         Session queueSession = getSessionPool().borrowObject();
         MessageConsumer messageConsumer = null;
         if (isTopic()) {
@@ -209,7 +209,7 @@ public class DefaultConsumer extends SjmsConsumer {
         // Don't pass in the session. Only needed if we are transacted
         MessageListener handler = createMessageHandler(null);
         messageConsumer.setMessageListener(handler);
-        return new MessageConsumerContainer(messageConsumer);
+        return new MessageConsumerResources(messageConsumer);
     }
 
     /**

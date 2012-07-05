@@ -44,7 +44,7 @@ public class InOnlyProducer extends SjmsProducer {
      * @return
      * @throws Exception
      */
-    public MessageProducerContainer doCreateProducerModel() throws Exception {
+    public MessageProducerResources doCreateProducerModel() throws Exception {
         Connection conn = getConnectionPool().borrowObject();
         Session session = null;
         if (isEndpointTransacted()) {
@@ -60,13 +60,13 @@ public class InOnlyProducer extends SjmsProducer {
             messageProducer = JmsObjectFactory.createQueueProducer(session, getDestinationName());
         }
         getConnectionPool().returnObject(conn);
-        return new MessageProducerContainer(session, messageProducer);
+        return new MessageProducerResources(session, messageProducer);
     }
     
     @Override
     public void sendMessage(Exchange exchange) throws Exception {
         if (getProducers() != null) {
-            MessageProducerContainer producer = getProducers().borrowObject();
+            MessageProducerResources producer = getProducers().borrowObject();
             
             if (isEndpointTransacted()) {
                 exchange.getUnitOfWork().addSynchronization(new SessionTransactionSynchronization(producer.getSession()));

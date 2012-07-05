@@ -38,23 +38,23 @@ public abstract class SjmsProducer extends DefaultAsyncProducer  {
 
     
     /**
-     * The {@link MessageProducerContainer} pool for all {@link SjmsProducer} classes.
+     * The {@link MessageProducerResources} pool for all {@link SjmsProducer} classes.
      *
      * @author sully6768
      */
-    protected class MessageProducerPool extends ObjectPool<MessageProducerContainer>{
+    protected class MessageProducerPool extends ObjectPool<MessageProducerResources>{
 
         public MessageProducerPool() {
             super(getProducerCount());
         }
 
         @Override
-        protected MessageProducerContainer createObject() throws Exception {
+        protected MessageProducerResources createObject() throws Exception {
             return doCreateProducerModel();
         }
         
         @Override
-        protected void destroyObject(MessageProducerContainer model) throws Exception {
+        protected void destroyObject(MessageProducerResources model) throws Exception {
             if (model.getMessageProducer() != null) {
                 model.getMessageProducer().close();
             }
@@ -73,9 +73,9 @@ public abstract class SjmsProducer extends DefaultAsyncProducer  {
     }
     
     /**
-     * The {@link MessageProducer} container for all {@link SjmsProducer} classes. 
+     * The {@link MessageProducer} resources for all {@link SjmsProducer} classes. 
      */
-    protected class MessageProducerContainer {
+    protected class MessageProducerResources {
         private final Session session;
         private final MessageProducer messageProducer;
 
@@ -85,7 +85,7 @@ public abstract class SjmsProducer extends DefaultAsyncProducer  {
          * @param session
          * @param messageProducer
          */
-        public MessageProducerContainer(Session session, MessageProducer messageProducer) {
+        public MessageProducerResources(Session session, MessageProducer messageProducer) {
             super();
             this.session = session;
             this.messageProducer = messageProducer;
@@ -93,7 +93,7 @@ public abstract class SjmsProducer extends DefaultAsyncProducer  {
 
         /**
          * Gets the Session value of session for this instance of
-         * MessageProducerContainer.
+         * MessageProducerResources.
          * 
          * @return the session
          */
@@ -103,7 +103,7 @@ public abstract class SjmsProducer extends DefaultAsyncProducer  {
 
         /**
          * Gets the QueueSender value of queueSender for this instance of
-         * MessageProducerContainer.
+         * MessageProducerResources.
          * 
          * @return the queueSender
          */
@@ -138,7 +138,7 @@ public abstract class SjmsProducer extends DefaultAsyncProducer  {
         }
     }
     
-    public abstract MessageProducerContainer doCreateProducerModel() throws Exception;
+    public abstract MessageProducerResources doCreateProducerModel() throws Exception;
     
     public abstract void sendMessage(Exchange exchange) throws Exception;
     

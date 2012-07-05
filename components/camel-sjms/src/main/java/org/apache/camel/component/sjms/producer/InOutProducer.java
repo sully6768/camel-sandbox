@@ -52,7 +52,7 @@ public class InOutProducer extends SjmsProducer {
      *
      * @author sully6768
      */
-    protected class MessageConsumerPool extends ObjectPool<MessageConsumerContainer>{
+    protected class MessageConsumerPool extends ObjectPool<MessageConsumerResources>{
 
         /**
          * TODO Add Constructor Javadoc
@@ -64,7 +64,7 @@ public class InOutProducer extends SjmsProducer {
         }
 
         @Override
-        protected MessageConsumerContainer createObject() throws Exception {
+        protected MessageConsumerResources createObject() throws Exception {
             Connection conn = getConnectionPool().borrowObject();
             Session session = conn.createSession(false, getAcknowledgeMode());
             MessageConsumer messageConsumer = JmsObjectFactory.createQueueConsumer(session, getNamedReplyTo());
@@ -84,12 +84,12 @@ public class InOutProducer extends SjmsProducer {
                 }
             });
             getConnectionPool().returnObject(conn);
-            MessageConsumerContainer mcm = new MessageConsumerContainer(session, messageConsumer);
+            MessageConsumerResources mcm = new MessageConsumerResources(session, messageConsumer);
             return mcm;
         }
         
         @Override
-        protected void destroyObject(MessageConsumerContainer model) throws Exception {
+        protected void destroyObject(MessageConsumerResources model) throws Exception {
             if (model.getMessageConsumer() != null) {
                 model.getMessageConsumer().close();
             }
@@ -108,9 +108,9 @@ public class InOutProducer extends SjmsProducer {
     }
     
     /**
-     * TODO Add Class documentation for MessageProducerContainer
+     * TODO Add Class documentation for MessageConsumerResources
      */
-    protected class MessageConsumerContainer {
+    protected class MessageConsumerResources {
         private final Session session;
         private final MessageConsumer messageConsumer;
 
@@ -120,7 +120,7 @@ public class InOutProducer extends SjmsProducer {
          * @param session
          * @param messageConsumer
          */
-        public MessageConsumerContainer(Session session, MessageConsumer messageConsumer) {
+        public MessageConsumerResources(Session session, MessageConsumer messageConsumer) {
             super();
             this.session = session;
             this.messageConsumer = messageConsumer;
@@ -128,7 +128,7 @@ public class InOutProducer extends SjmsProducer {
 
         /**
          * Gets the Session value of session for this instance of
-         * MessageConsumerContainer.
+         * MessageConsumerResources.
          * 
          * @return the session
          */
@@ -138,7 +138,7 @@ public class InOutProducer extends SjmsProducer {
 
         /**
          * Gets the MessageConsumer value of queueSender for this instance of
-         * MessageConsumerContainer.
+         * MessageConsumerResources.
          * 
          * @return the queueSender
          */
@@ -173,18 +173,18 @@ public class InOutProducer extends SjmsProducer {
         }
     }
     
-    public MessageProducerContainer doCreateProducerModel() throws Exception {
+    public MessageProducerResources doCreateProducerModel() throws Exception {
         Connection conn = getConnectionPool().borrowObject();
         Session session = conn.createSession(false, getAcknowledgeMode());
         MessageProducer messageProducer = null;
         messageProducer = JmsObjectFactory.createQueueProducer(session, getDestinationName());
         getConnectionPool().returnObject(conn);
-        return new MessageProducerContainer(session, messageProducer);
+        return new MessageProducerResources(session, messageProducer);
     }
     
     public void sendMessage(final Exchange exchange) throws Exception {
         if (getProducers() != null) {
-            final MessageProducerContainer producer = getProducers().borrowObject();
+            final MessageProducerResources producer = getProducers().borrowObject();
 
             if (isEndpointTransacted()) {
                 exchange.getUnitOfWork().addSynchronization(new SessionTransactionSynchronization(producer.getSession()));
