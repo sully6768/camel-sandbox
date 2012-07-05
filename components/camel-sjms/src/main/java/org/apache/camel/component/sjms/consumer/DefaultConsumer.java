@@ -1,15 +1,18 @@
-/*
- *    Licensed under the Apache License, Version 2.0 (the "License");
- *    you may not use this file except in compliance with the License.
- *    You may obtain a copy of the License at
+/**
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.
+ * The ASF licenses this file to You under the Apache License, Version 2.0
+ * (the "License"); you may not use this file except in compliance with
+ * the License.  You may obtain a copy of the License at
  *
- *        http://www.apache.org/licenses/LICENSE-2.0
+ *      http://www.apache.org/licenses/LICENSE-2.0
  *
- *    Unless required by applicable law or agreed to in writing, software
- *    distributed under the License is distributed on an "AS IS" BASIS,
- *    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *    See the License for the specific language governing permissions and
- *    limitations under the License.
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 package org.apache.camel.component.sjms.consumer;
 
@@ -31,15 +34,17 @@ import org.apache.camel.component.sjms.tx.SessionTransactionSynchronization;
 
 /**
  * A non-transacted queue consumer for a given JMS Destination
- *
+ * 
  */
 public class DefaultConsumer extends SjmsConsumer {
+    
+    protected MessageConsumerPool consumers;
 
     private AtomicBoolean stopped = new AtomicBoolean(false);
-    protected MessageConsumerPool consumers;
     private final ExecutorService executor;
-    
-    protected class MessageConsumerPool extends ObjectPool<MessageConsumerContainer>{
+
+    protected class MessageConsumerPool extends
+            ObjectPool<MessageConsumerContainer> {
 
         public MessageConsumerPool() {
             super(getConsumerCount());
@@ -48,30 +53,33 @@ public class DefaultConsumer extends SjmsConsumer {
         @Override
         protected MessageConsumerContainer createObject() throws Exception {
             MessageConsumerContainer model = null;
-            if (isEndpointTransacted() || getSjmsEndpoint().getExchangePattern().equals(ExchangePattern.InOut)) {
+            if (isEndpointTransacted()
+                    || getSjmsEndpoint().getExchangePattern().equals(
+                            ExchangePattern.InOut)) {
                 model = createConsumerWithDedicatedSession();
             } else {
                 model = createConsumerListener();
             }
             return model;
         }
-        
+
         @Override
-        protected void destroyObject(MessageConsumerContainer model) throws Exception {
+        protected void destroyObject(MessageConsumerContainer model)
+                throws Exception {
             if (model != null) {
-                if(model.getMessageConsumer() != null) {
-                    if(model.getMessageConsumer().getMessageListener() != null) {
+                if (model.getMessageConsumer() != null) {
+                    if (model.getMessageConsumer().getMessageListener() != null) {
                         model.getMessageConsumer().setMessageListener(null);
                     }
                     model.getMessageConsumer().close();
                 }
-                    
-                if(model.getSession() != null) {
+
+                if (model.getSession() != null) {
                     if (model.getSession().getTransacted()) {
                         try {
                             model.getSession().rollback();
                         } catch (Exception e) {
-                            // Do nothing.  Just make sure we are cleaned up
+                            // Do nothing. Just make sure we are cleaned up
                         }
                     }
                     model.getSession().close();
@@ -79,7 +87,7 @@ public class DefaultConsumer extends SjmsConsumer {
             }
         }
     }
-    
+
     protected class MessageConsumerContainer {
         private final Session session;
         private final MessageConsumer messageConsumer;
@@ -102,7 +110,8 @@ public class DefaultConsumer extends SjmsConsumer {
          * @param session
          * @param messageProducer
          */
-        public MessageConsumerContainer(Session session, MessageConsumer messageConsumer) {
+        public MessageConsumerContainer(Session session,
+                MessageConsumer messageConsumer) {
             super();
             this.session = session;
             this.messageConsumer = messageConsumer;
@@ -128,10 +137,11 @@ public class DefaultConsumer extends SjmsConsumer {
             return messageConsumer;
         }
     }
-    
+
     public DefaultConsumer(SjmsEndpoint endpoint, Processor processor) {
         super(endpoint, processor);
-        this.executor = endpoint.getCamelContext().getExecutorServiceManager().newDefaultThreadPool(this, "SjmsConsumer");
+        this.executor = endpoint.getCamelContext().getExecutorServiceManager()
+                .newDefaultThreadPool(this, "SjmsConsumer");
     }
 
     @Override
@@ -149,20 +159,21 @@ public class DefaultConsumer extends SjmsConsumer {
             consumers = null;
         }
     }
-    
+
     @Override
     protected void doResume() throws Exception {
         super.doResume();
         getStopped().set(false);
     }
-    
+
     @Override
     protected void doSuspend() throws Exception {
         getStopped().set(true);
         super.doSuspend();
     }
-    
-    private MessageConsumerContainer createConsumerWithDedicatedSession() throws Exception {
+
+    private MessageConsumerContainer createConsumerWithDedicatedSession()
+            throws Exception {
         Connection conn = getConnectionPool().borrowObject();
         Session session = null;
         if (isEndpointTransacted()) {
@@ -172,30 +183,34 @@ public class DefaultConsumer extends SjmsConsumer {
         }
         MessageConsumer messageConsumer = null;
         if (isTopic()) {
-            messageConsumer = JmsObjectFactory.createTopicConsumer(session, getDestinationName());    
+            messageConsumer = JmsObjectFactory.createTopicConsumer(session,
+                    getDestinationName());
         } else {
-            messageConsumer = JmsObjectFactory.createQueueConsumer(session, getDestinationName());
+            messageConsumer = JmsObjectFactory.createQueueConsumer(session,
+                    getDestinationName());
         }
         MessageListener handler = createMessageHandler(session);
         messageConsumer.setMessageListener(handler);
         getConnectionPool().returnObject(conn);
         return new MessageConsumerContainer(session, messageConsumer);
     }
-    
+
     private MessageConsumerContainer createConsumerListener() throws Exception {
         Session queueSession = getSessionPool().borrowObject();
         MessageConsumer messageConsumer = null;
         if (isTopic()) {
-            messageConsumer = JmsObjectFactory.createTopicConsumer(queueSession, getDestinationName());    
+            messageConsumer = JmsObjectFactory.createTopicConsumer(
+                    queueSession, getDestinationName());
         } else {
-            messageConsumer = JmsObjectFactory.createQueueConsumer(queueSession, getDestinationName());
+            messageConsumer = JmsObjectFactory.createQueueConsumer(
+                    queueSession, getDestinationName());
         }
         getSessionPool().returnObject(queueSession);
-        // Don't pass in the session.  Only needed if we are transacted
+        // Don't pass in the session. Only needed if we are transacted
         MessageListener handler = createMessageHandler(null);
         messageConsumer.setMessageListener(handler);
         return new MessageConsumerContainer(messageConsumer);
-    } 
+    }
 
     /**
      * Helper factory method used to create a MessageListener based on the MEP
@@ -206,12 +221,16 @@ public class DefaultConsumer extends SjmsConsumer {
      */
     protected MessageListener createMessageHandler(Session session) {
         MessageListener answer = null;
-        if (getSjmsEndpoint().getExchangePattern().equals(ExchangePattern.InOnly)){
+        if (getSjmsEndpoint().getExchangePattern().equals(
+                ExchangePattern.InOnly)) {
             DefaultMessageHandler messageHandler = null;
             if (isEndpointTransacted()) {
-                messageHandler = new InOnlyMessageHandler(getEndpoint(), getStopped(), executor, new SessionTransactionSynchronization(session));
+                messageHandler = new InOnlyMessageHandler(getEndpoint(),
+                        getStopped(), executor,
+                        new SessionTransactionSynchronization(session));
             } else {
-                messageHandler = new InOnlyMessageHandler(getEndpoint(), getStopped(), executor);
+                messageHandler = new InOnlyMessageHandler(getEndpoint(),
+                        getStopped(), executor);
             }
             messageHandler.setSession(session);
             messageHandler.setProcessor(getAsyncProcessor());
@@ -221,9 +240,12 @@ public class DefaultConsumer extends SjmsConsumer {
         } else {
             DefaultMessageHandler messageHandler = null;
             if (isEndpointTransacted()) {
-                messageHandler = new InOutMessageHandler(getEndpoint(), getStopped(), executor, new SessionTransactionSynchronization(session));
+                messageHandler = new InOutMessageHandler(getEndpoint(),
+                        getStopped(), executor,
+                        new SessionTransactionSynchronization(session));
             } else {
-                messageHandler = new InOutMessageHandler(getEndpoint(), getStopped(), executor);
+                messageHandler = new InOutMessageHandler(getEndpoint(),
+                        getStopped(), executor);
             }
             messageHandler.setSession(session);
             messageHandler.setProcessor(getAsyncProcessor());
