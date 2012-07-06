@@ -97,10 +97,18 @@ public abstract class ObjectPool<T> {
 	 * @throws Exception
 	 */
 	public T borrowObject() throws Exception {
+		return borrowObject(1000);
+	}
+
+	/**
+	 * @return
+	 * @throws Exception
+	 */
+	public T borrowObject(long timeout) throws Exception {
 		T t = null;
 		getLock().writeLock().lock();
 		try {
-			t = objects.poll(200, TimeUnit.MILLISECONDS);
+			t = objects.poll(timeout, TimeUnit.MILLISECONDS);
 		} finally {
 			getLock().writeLock().unlock();
 		}

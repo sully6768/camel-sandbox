@@ -71,7 +71,7 @@ public class SessionPool extends ObjectPool<Session> {
     @Override
     protected Session createObject() throws Exception {
         Session session = null;
-        final Connection connection = getConnectionPool().borrowObject();
+        final Connection connection = getConnectionPool().borrowObject(5000);
         if(connection != null) {
             if (isXa()) {
                 try {

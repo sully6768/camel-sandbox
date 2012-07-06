@@ -21,6 +21,7 @@ import javax.jms.Message;
 import javax.jms.MessageProducer;
 import javax.jms.Session;
 
+import org.apache.camel.AsyncCallback;
 import org.apache.camel.Exchange;
 import org.apache.camel.component.sjms.SjmsEndpoint;
 import org.apache.camel.component.sjms.SjmsProducer;
@@ -64,7 +65,7 @@ public class InOnlyProducer extends SjmsProducer {
     }
     
     @Override
-    public void sendMessage(Exchange exchange) throws Exception {
+    public void sendMessage(Exchange exchange, AsyncCallback callback) throws Exception {
         if (getProducers() != null) {
             MessageProducerResources producer = getProducers().borrowObject();
             
@@ -75,6 +76,7 @@ public class InOnlyProducer extends SjmsProducer {
             Message message = JmsMessageHelper.createMessage(exchange, producer.getSession());
             producer.getMessageProducer().send(message);
             getProducers().returnObject(producer);
+            callback.done(isSynchronous());
         }
     }
 }

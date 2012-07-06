@@ -35,12 +35,12 @@ import org.apache.camel.component.sjms.support.JmsTestSupport;
 
 import org.junit.Test;
 
-public class InOutQueueProducerLoadTest extends JmsTestSupport {
+public class InOutQueueProducerAsyncLoadTest extends JmsTestSupport {
     
     private static final String TEST_DESTINATION_NAME = "in.out.queue.producer.test";
     private MessageConsumer mc1;
     private MessageConsumer mc2;
-    public InOutQueueProducerLoadTest() {
+    public InOutQueueProducerAsyncLoadTest() {
 	}
     
     @Override
@@ -73,8 +73,7 @@ public class InOutQueueProducerLoadTest extends JmsTestSupport {
     @Test
     public void testInOutQueueProducer() throws Exception {
 
-        ExecutorService executor = Executors.newFixedThreadPool(5);
-
+        ExecutorService executor = Executors.newFixedThreadPool(2);
 
         for (int i = 1; i <= 5000; i++) {
             final int tempI = i;
@@ -134,7 +133,7 @@ public class InOutQueueProducerLoadTest extends JmsTestSupport {
             public void configure() {
                 from("direct:start")
                     .to("log:" + TEST_DESTINATION_NAME + ".in.log?showBody=true")
-                    .inOut("sjms:queue:" + TEST_DESTINATION_NAME + ".request" + "?namedReplyTo=" + TEST_DESTINATION_NAME + ".response&consumerCount=2&producerCount=4&synchronous=false")
+                    .inOut("sjms:queue:" + TEST_DESTINATION_NAME + ".request" + "?namedReplyTo=" + TEST_DESTINATION_NAME + ".response&consumerCount=20&producerCount=40&synchronous=false")
                     .to("log:" + TEST_DESTINATION_NAME + ".out.log?showBody=true");
             }
         };

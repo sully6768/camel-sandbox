@@ -139,8 +139,7 @@ public abstract class SjmsProducer extends DefaultAsyncProducer  {
     }
     
     public abstract MessageProducerResources doCreateProducerModel() throws Exception;
-    
-    public abstract void sendMessage(Exchange exchange) throws Exception;
+    public abstract void sendMessage(Exchange exchange, final AsyncCallback callback) throws Exception;
     
     @Override
     public boolean process(final Exchange exchange, final AsyncCallback callback) {
@@ -156,25 +155,24 @@ public abstract class SjmsProducer extends DefaultAsyncProducer  {
                     @Override
                     public void run() {
                         try {
-                            sendMessage(exchange);
-                            // Execute the call back
-                            callback.done(isSynchronous());
+                            sendMessage(exchange, callback);
                         } catch (Exception e) {
                             ObjectHelper.wrapRuntimeCamelException(e);
                         }
-                        
                     }
                 });
             } else {
                 if(log.isDebugEnabled()) {
                     log.debug("  Sending message synchronously for Exchange id:{}", exchange.getExchangeId());
                 }
-                sendMessage(exchange);
-                callback.done(isSynchronous());
+                sendMessage(exchange, callback);
             }
         } catch (Exception e) {
             if(log.isDebugEnabled()) {
                 log.debug("Processing Exchange.id:{}", exchange.getExchangeId() + " - FAILED");
+            }
+            if(log.isTraceEnabled()) {
+                log.trace("Exception: " + e.getLocalizedMessage(), e);
             }
             exchange.setException(e);
         }
