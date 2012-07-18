@@ -24,49 +24,22 @@ import org.junit.Test;
 
 public class SimpleJmsComponentTest extends CamelTestSupport {
 
-//    @Produce(uri = "direct:start")
-//    protected ProducerTemplate template;
 
     @Test
     public void testHelloWorld() throws Exception {
         SjmsComponent component = (SjmsComponent) this.context.getComponent("sjms");
         assertNotNull(component);
-//        String expectedBody = "Hello World!";
-//        MockEndpoint mock = getMockEndpoint("mock:result");
-//        mock.expectedMinimumMessageCount(1);
-//
-//        mock.expectedBodiesReceived("Hello World! How are you?");
-//        template.sendBody(expectedBody);
-//
-//        assertMockEndpointsSatisfied();
     }
 
     @Override
     protected RouteBuilder createRouteBuilder() throws Exception {
         return new RouteBuilder() {
             public void configure() {
-
                 ActiveMQConnectionFactory connectionFactory = new ActiveMQConnectionFactory(
                         "vm://broker?broker.persistent=false&broker.useJmx=true");
                 SjmsComponent component = new SjmsComponent();
                 component.setConnectionFactory(connectionFactory);
                 getContext().addComponent("sjms", component);
-                
-                from("sjms:queue:test.foo.in")
-                    .to("sjms:queue:test.foo.out");
-                
-//                from("sjms:queue:test.foo")
-//                    .process(new Processor() {
-//                        
-//                        @Override
-//                        public void process(Exchange exchange) throws Exception {
-//                            String body = (String) exchange.getIn().getBody();
-//                            body += " How are you?";
-//                            exchange.getIn().setBody(body);
-//                            
-//                        }
-//                    })
-//                    .to("mock:result");
             }
         };
     }
