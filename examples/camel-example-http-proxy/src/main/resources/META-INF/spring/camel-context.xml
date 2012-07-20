@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Licensed to the Apache Software Foundation (ASF) under one or more
+    contributor license agreements.  See the NOTICE file distributed with
+    this work for additional information regarding copyright ownership.
+    The ASF licenses this file to You under the Apache License, Version 2.0
+    (the "License"); you may not use this file except in compliance with
+    the License.  You may obtain a copy of the License at
+
+       http://www.apache.org/licenses/LICENSE-2.0
+
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+-->
+<beans
+    xmlns="http://www.springframework.org/schema/beans"
+    xmlns:context="http://www.springframework.org/schema/context"
+    xmlns:util="http://www.springframework.org/schema/util"
+    xmlns:camel="http://camel.apache.org/schema/spring"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="
+		http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context.xsd
+        http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util.xsd        
+		http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd">
+
+
+    <context:property-placeholder
+        properties-ref="properties" />
+        
+    <bean
+        id="proxy-recipient-list"
+        class="org.apache.camel.example.http.proxy.HttpProxyRecipientList"
+        init-method="init"
+        destroy-method="destroy">
+        <property
+            name="properties"
+            ref="properties" />
+    </bean>
+
+    <camel:camelContext
+        id="http-proxy-context">
+        <camel:propertyPlaceholder
+            id="http-proxy-property-placeholder"
+            location="ref:properties" />
+        <camel:onException>
+            <camel:exception>java.lang.Exception</camel:exception>
+            <camel:handled>
+                <camel:constant>true</camel:constant>
+            </camel:handled>
+            <camel:transform>
+                <camel:simple>Unsupported Address: ${exception.message} - no services found at this address.</camel:simple>
+            </camel:transform>
+        </camel:onException>
+        <camel:route
+            id="http-proxy-route">
+            <camel:from
+                uri="{{external.address}}" />
+            <camel:to uri="log:http.proxy.route?level=INFO&amp;multiline=true&amp;showHeaders=true&amp;showBody=true" />
+            <camel:bean
+                ref="proxy-recipient-list"
+                method="routeList" />
+        </camel:route>
+    </camel:camelContext>
+
+</beans>
