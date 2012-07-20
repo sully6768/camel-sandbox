@@ -16,12 +16,16 @@
     limitations under the License.
 -->
 <features>
-    
     <feature name="${project.artifactId}" version="${project.version}">
         <configfile finalname="/etc/org.apache.camel.example.http.proxy.cfg">mvn:${project.groupId}/${project.artifactId}/${project.version}/cfg</configfile>
+        <feature version="[2,3)">war</feature>
+        <feature version="[2,3)">cxf</feature>
         <feature version="[2,3)">camel-spring</feature>
+        <feature version="[2,3)">camel-jaxb</feature>
+        <feature version="[2,3)">camel-cxf</feature>
         <feature version="[2,3)">camel-http</feature>
         <feature version="[2,3)">camel-jetty</feature>
+        <bundle> mvn:org.apache.camel/camel-example-cxf-osgi/${project.version}</bundle>
         <bundle>mvn:${project.groupId}/${project.artifactId}/${project.version}</bundle>
     </feature>
 </features>

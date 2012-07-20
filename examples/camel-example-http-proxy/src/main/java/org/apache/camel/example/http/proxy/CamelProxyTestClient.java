@@ -44,7 +44,7 @@ public class CamelProxyTestClient {
 	
 	public void testWsdlProxy() throws Exception {
 		ProducerTemplate template = context.createProducerTemplate();
-		String wsdl = template.requestBodyAndHeader("jetty:http://localhost:11111/cxf/camel-example-cxf-osgi/webservices/incident?enableJmx=true", "", Exchange.HTTP_QUERY, "wsdl", String.class);
+		String wsdl = template.requestBodyAndHeader("http://localhost:11111/cxf/camel-example-cxf-osgi/webservices/incident", "", Exchange.HTTP_QUERY, "wsdl", String.class);
 		System.out.println("");
 		System.out.println("WSDL: \n" + wsdl);
 	}
@@ -68,7 +68,7 @@ public class CamelProxyTestClient {
 		sb.append("</soapenv:Body>");
 		sb.append("</soapenv:Envelope>");
 		
-		String response = template.requestBodyAndHeader("jetty:http://localhost:11111/cxf/camel-example-cxf-osgi/webservices/incident?enableJmx=true", sb.toString(), Exchange.HTTP_METHOD, "POST", String.class);
+		String response = template.requestBodyAndHeader("http://localhost:11111/cxf/camel-example-cxf-osgi/webservices/incident", sb.toString(), Exchange.HTTP_METHOD, "POST", String.class);
 		System.out.println("");
 		System.out.println("Response: \n" + response);
 	}
@@ -92,7 +92,7 @@ public class CamelProxyTestClient {
 		sb.append("</soapenv:Body>");
 		sb.append("</soapenv:Envelope>");
 		
-		String response = template.requestBodyAndHeader("jetty:http://localhost:11111/cxf/camel-example-cxf-osgi/webservices/incident", sb.toString(), Exchange.HTTP_METHOD, "POST", String.class);
+		String response = template.requestBodyAndHeader("http://localhost:11111/cxf/camel-example-cxf-osgi/webservices/incident", sb.toString(), Exchange.HTTP_METHOD, "POST", String.class);
 		System.out.println("");
 		System.out.println("Response: \n" + response);
 	}
