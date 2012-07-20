@@ -16,6 +16,8 @@
  */
 package org.apache.camel.component.sjms.consumer;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -23,15 +25,19 @@ import javax.jms.Destination;
 import javax.jms.JMSException;
 import javax.jms.Message;
 import javax.jms.MessageProducer;
+import javax.jms.Queue;
+import javax.jms.TemporaryQueue;
+import javax.jms.TemporaryTopic;
+import javax.jms.Topic;
 
 import org.apache.camel.AsyncCallback;
 import org.apache.camel.Endpoint;
 import org.apache.camel.Exchange;
-import org.apache.camel.RuntimeCamelException;
 import org.apache.camel.component.sjms.jms.JmsMessageHelper;
 import org.apache.camel.component.sjms.jms.JmsObjectFactory;
 import org.apache.camel.spi.Synchronization;
 import org.apache.camel.util.AsyncProcessorHelper;
+import org.apache.camel.util.ObjectHelper;
 
 /**
  * TODO Add Class documentation for DefaultMessageHandler
@@ -39,6 +45,8 @@ import org.apache.camel.util.AsyncProcessorHelper;
  * @author sully6768
  */
 public class InOutMessageHandler extends DefaultMessageHandler {
+	
+	private Map<String, MessageProducer> producerCache = new ConcurrentHashMap<String, MessageProducer>();
 
     /**
      * TODO Add Constructor Javadoc
@@ -61,7 +69,7 @@ public class InOutMessageHandler extends DefaultMessageHandler {
             ExecutorService executor, Synchronization synchronization) {
         super(endpoint, stopped, executor, synchronization);
     }
-
+    
     /**
      * @param message
      */
@@ -71,44 +79,78 @@ public class InOutMessageHandler extends DefaultMessageHandler {
             log.debug("SjmsMessageConsumer invoked for Exchange id:{} ",
                     exchange.getExchangeId());
         }
-        if (isStarted()) {
-            MessageHanderAsyncCallback callback = new MessageHanderAsyncCallback(
-                    exchange);
-            if (exchange.isFailed()) {
-                return;
-            } else {
-                if (isTransacted() || isSynchronous()) {
-                    // must process synchronous if transacted or configured to
-                    // do so
-                    if (log.isTraceEnabled()) {
-                        log.trace("Processing Exchange id:{} synchronously",
-                                exchange.getExchangeId());
-                    }
-                    try {
-                        AsyncProcessorHelper.process(getProcessor(), exchange);
-                    } catch (Exception e) {
-                        exchange.setException(e);
-                    } finally {
-                        callback.done(true);
-                    }
+        try {
+            MessageProducer messageProducer = null;
+        	if (isStarted()) {
+            	if (messageProducer == null) {
+            		Object obj = exchange.getIn().getHeader("JMSReplyTo");
+                    if (obj != null){
+    					Destination replyTo = null;
+    					if (isDestination(obj)) {
+    						replyTo = (Destination) obj;
+    					} else if (obj instanceof String) {
+    						replyTo = JmsObjectFactory.createDestination(getSession(), (String) obj, isTopic());
+    					} else {
+    						throw new Exception(
+    								"The value of JMSReplyTo must be a valid Destination or String.  Value provided: "
+    										+ obj);
+    					}
+    					if (isTemporaryDestination(replyTo)) {
+    						messageProducer = getSession().createProducer(replyTo);
+    					} else {
+    						String destinationName = getDestinationName(replyTo);
+    						if (producerCache.containsKey(destinationName)) {
+    							messageProducer = producerCache.get(destinationName);
+    						} else {
+    							messageProducer = getSession()
+    									.createProducer(replyTo);
+    							producerCache.put(destinationName, messageProducer);
+    						}
+    					}
+                    }	
+            	}
+            	
+                
+                MessageHanderAsyncCallback callback = new MessageHanderAsyncCallback(
+                        exchange, messageProducer);
+                if (exchange.isFailed()) {
+                    return;
                 } else {
-                    // process asynchronous using the async routing engine
-                    if (log.isTraceEnabled()) {
-                        log.trace("Processing Exchange id:{} asynchronously",
-                                exchange.getExchangeId());
-                    }
-                    boolean sync = AsyncProcessorHelper.process(getProcessor(),
-                            exchange, callback);
-                    if (!sync) {
-                        // will be done async so return now
-                        return;
+                    if (isTransacted() || isSynchronous()) {
+                        // must process synchronous if transacted or configured to
+                        // do so
+                        if (log.isTraceEnabled()) {
+                            log.trace("Processing Exchange id:{} synchronously",
+                                    exchange.getExchangeId());
+                        }
+                        try {
+                            AsyncProcessorHelper.process(getProcessor(), exchange);
+                        } catch (Exception e) {
+                            exchange.setException(e);
+                        } finally {
+                            callback.done(true);
+                        }
+                    } else {
+                        // process asynchronous using the async routing engine
+                        if (log.isTraceEnabled()) {
+                            log.trace("Processing Exchange id:{} asynchronously",
+                                    exchange.getExchangeId());
+                        }
+                        boolean sync = AsyncProcessorHelper.process(getProcessor(),
+                                exchange, callback);
+                        if (!sync) {
+                            // will be done async so return now
+                            return;
+                        }
                     }
                 }
+            } else {
+                log.warn(
+                        "SjmsMessageConsumer invoked while stopped.  Exchange id:{} will not be processed.",
+                        exchange.getExchangeId());
             }
-        } else {
-            log.warn(
-                    "SjmsMessageConsumer invoked while stopped.  Exchange id:{} will not be processed.",
-                    exchange.getExchangeId());
+        } catch(Exception e) {
+        	
         }
 
         if (log.isDebugEnabled()) {
@@ -116,10 +158,53 @@ public class InOutMessageHandler extends DefaultMessageHandler {
                     exchange.getExchangeId());
         }
     }
+    
+    @Override
+    public void close() {
+    	for (String key : producerCache.keySet()) {
+			MessageProducer mp = producerCache.get(key);
+			try {
+				mp.close();
+			} catch (JMSException e) {
+				ObjectHelper.wrapRuntimeCamelException(e);
+			}
+		}
+    	producerCache.clear();
+    	
+//    	if (messageProducer != null) {
+//    		try {
+//				messageProducer.close();
+//			} catch (JMSException e) {
+//				ObjectHelper.wrapRuntimeCamelException(e);
+//			} finally {
+//				messageProducer = null;
+//			}
+//    	}
+    }
+    
+    private boolean isDestination(Object object) {
+    	return (object instanceof Destination);
+    }
+    
+    private boolean isTemporaryDestination(Destination destination) {
+    	return (destination instanceof TemporaryQueue || destination instanceof TemporaryTopic);
+    }
+    
+    private String getDestinationName(Destination destination) throws Exception {
+    	String answer = null;
+    	if (destination instanceof Queue) {
+    		answer = ((Queue)destination).getQueueName();
+    	} else if (destination instanceof Topic) {
+    		answer = ((Topic)destination).getTopicName();
+    	}
+    		
+    	return answer;
+    }
 
     protected class MessageHanderAsyncCallback implements AsyncCallback {
 
         private Exchange exchange;
+        private MessageProducer localProducer;
 
         /**
          * TODO Add Constructor Javadoc
@@ -127,42 +212,23 @@ public class InOutMessageHandler extends DefaultMessageHandler {
          * @param xid
          * @param exchange
          */
-        public MessageHanderAsyncCallback(Exchange exchange) {
+        public MessageHanderAsyncCallback(Exchange exchange, MessageProducer localProducer) {
             super();
             this.exchange = exchange;
+            this.localProducer = localProducer;
         }
 
         @Override
         public void done(boolean sync) {
 
             try {
-                log.warn(
-                        "Transacted Exchange id:{} failed.  Rolling back transaction.",
-                        exchange.getExchangeId());
                 Message response = JmsMessageHelper.createMessage(exchange,
                         getSession(), true);
-                // TextMessage response = getSession().createTextMessage();
-                // response.setJMSCorrelationID(request.getJMSCorrelationID());
-                Object obj = exchange.getIn().getHeader("JMSReplyTo");
-                Destination replyTo = null;
-                if (obj instanceof String) {
-                    replyTo = JmsObjectFactory.createQueue(getSession(),
-                            (String) obj);
-                } else {
-                    replyTo = (Destination) obj;
-                }
                 response.setJMSCorrelationID(exchange.getIn().getHeader(
-                        "JMSCorrelationID", String.class));
-                MessageProducer mp = getSession().createProducer(replyTo);
-                mp.send(response);
-                mp.close();
-            } catch (JMSException e) {
-                throw new RuntimeCamelException(
-                        "Unable to rollback the transaction. " + "Error: "
-                                + e.getErrorCode() + " - "
-                                + e.getLocalizedMessage(), e);
+                        "JMSCorrelationID", String.class)); 
+                localProducer.send(response);
             } catch (Exception e) {
-                log.error("TODO Auto-generated catch block", e);
+            	exchange.setException(e);
             }
         }
     }

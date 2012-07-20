@@ -31,17 +31,16 @@ import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.component.sjms.SjmsComponent;
 import org.apache.camel.component.sjms.SjmsComponentConfiguration;
 import org.apache.camel.component.sjms.jms.JmsObjectFactory;
-import org.apache.camel.component.sjms.producer.InOutQueueProducerSyncLoadTest.MyMessageListener;
 import org.apache.camel.component.sjms.support.JmsTestSupport;
 
 import org.junit.Test;
 
-public class InOutQueueProducerAsyncLoadTest extends JmsTestSupport {
+public class InOutQueueProducerSyncLoadTest extends JmsTestSupport {
     
     private static final String TEST_DESTINATION_NAME = "in.out.queue.producer.test";
     private MessageConsumer mc1;
     private MessageConsumer mc2;
-    public InOutQueueProducerAsyncLoadTest() {
+    public InOutQueueProducerSyncLoadTest() {
 	}
     
     @Override
@@ -138,8 +137,7 @@ public class InOutQueueProducerAsyncLoadTest extends JmsTestSupport {
             public void configure() {
                 from("direct:start")
                     .to("log:" + TEST_DESTINATION_NAME + ".in.log?showBody=true")
-                    .inOut("sjms:queue:" + TEST_DESTINATION_NAME + ".request" + "?namedReplyTo=" + TEST_DESTINATION_NAME + ".response&consumerCount=10&producerCount=20&synchronous=false")
-                    	.threads(20)
+                    .inOut("sjms:queue:" + TEST_DESTINATION_NAME + ".request" + "?namedReplyTo=" + TEST_DESTINATION_NAME + ".response&consumerCount=20&producerCount=40&synchronous=true")
                     .to("log:" + TEST_DESTINATION_NAME + ".out.log?showBody=true");
             }
         };

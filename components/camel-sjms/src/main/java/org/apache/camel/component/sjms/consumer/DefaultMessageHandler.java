@@ -44,20 +44,22 @@ import org.slf4j.LoggerFactory;
  * 
  * @author sully6768
  */
-public class DefaultMessageHandler implements MessageListener {
+public abstract class DefaultMessageHandler implements MessageListener {
 
     protected final Logger log = LoggerFactory.getLogger(getClass());
+    
+    private final AtomicBoolean stopped;
+    private final ExecutorService executor;
+    
     private Endpoint endpoint;
     private AsyncProcessor processor;
     private Session session;
     private boolean transacted = false;
     private SessionAcknowledgementType acknowledgementType = SessionAcknowledgementType.AUTO_ACKNOWLEDGE;
     private boolean synchronous = true;
-    private final AtomicBoolean stopped;
-    private Destination namedReplyToDestination;
-    private final ExecutorService executor;
-
+    private Destination namedReplyTo;
     private Synchronization synchronization;
+    private boolean topic = false;
 
     /**
      * TODO Add Constructor Javadoc
@@ -93,7 +95,7 @@ public class DefaultMessageHandler implements MessageListener {
     /**
      * @param message
      */
-    public void handleMessage(Message message) {
+    private void handleMessage(Message message) {
         RuntimeCamelException rce = null;
         try {
             final DefaultExchange exchange = (DefaultExchange) JmsMessageHelper
@@ -148,8 +150,9 @@ public class DefaultMessageHandler implements MessageListener {
         }
     }
 
-    public void doHandleMessage(final Exchange exchange) {
-    }
+    public abstract void doHandleMessage(final Exchange exchange);
+    
+    public abstract void close();
 
     public void setTransacted(boolean transacted) {
         this.transacted = transacted;
@@ -204,11 +207,29 @@ public class DefaultMessageHandler implements MessageListener {
         return !isStopped();
     }
 
-    public void setNamedReplyToDestination(Destination namedReplyToDestination) {
-        this.namedReplyToDestination = namedReplyToDestination;
+    public void setNamedReplyTo(Destination namedReplyToDestination) {
+        this.namedReplyTo = namedReplyToDestination;
     }
 
-    public Destination getNamedReplyToDestination() {
-        return namedReplyToDestination;
+    public Destination getNamedReplyTo() {
+        return namedReplyTo;
     }
+
+	/**
+	 * Sets the boolean value of topic for this instance of DefaultMessageHandler.
+	 *
+	 * @param topic Sets boolean, default is TODO add default
+	 */
+	public void setTopic(boolean topic) {
+		this.topic = topic;
+	}
+
+	/**
+	 * Gets the boolean value of topic for this instance of DefaultMessageHandler.
+	 *
+	 * @return the topic
+	 */
+	public boolean isTopic() {
+		return topic;
+	}
 }

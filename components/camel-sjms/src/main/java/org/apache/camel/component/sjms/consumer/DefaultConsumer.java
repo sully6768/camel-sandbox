@@ -220,10 +220,9 @@ public class DefaultConsumer extends SjmsConsumer {
      * @return
      */
     protected MessageListener createMessageHandler(Session session) {
-        MessageListener answer = null;
+    	DefaultMessageHandler messageHandler = null;
         if (getSjmsEndpoint().getExchangePattern().equals(
                 ExchangePattern.InOnly)) {
-            DefaultMessageHandler messageHandler = null;
             if (isEndpointTransacted()) {
                 messageHandler = new InOnlyMessageHandler(getEndpoint(),
                         getStopped(), executor,
@@ -232,13 +231,7 @@ public class DefaultConsumer extends SjmsConsumer {
                 messageHandler = new InOnlyMessageHandler(getEndpoint(),
                         getStopped(), executor);
             }
-            messageHandler.setSession(session);
-            messageHandler.setProcessor(getAsyncProcessor());
-            messageHandler.setSynchronous(isSynchronous());
-            messageHandler.setTransacted(isEndpointTransacted());
-            answer = messageHandler;
         } else {
-            DefaultMessageHandler messageHandler = null;
             if (isEndpointTransacted()) {
                 messageHandler = new InOutMessageHandler(getEndpoint(),
                         getStopped(), executor,
@@ -247,13 +240,13 @@ public class DefaultConsumer extends SjmsConsumer {
                 messageHandler = new InOutMessageHandler(getEndpoint(),
                         getStopped(), executor);
             }
-            messageHandler.setSession(session);
-            messageHandler.setProcessor(getAsyncProcessor());
-            messageHandler.setSynchronous(isSynchronous());
-            messageHandler.setTransacted(isEndpointTransacted());
-            answer = messageHandler;
         }
-        return answer;
+        messageHandler.setSession(session);
+        messageHandler.setProcessor(getAsyncProcessor());
+        messageHandler.setSynchronous(isSynchronous());
+        messageHandler.setTransacted(isEndpointTransacted());
+        messageHandler.setTopic(isTopic());
+        return messageHandler;
     }
 
     /**

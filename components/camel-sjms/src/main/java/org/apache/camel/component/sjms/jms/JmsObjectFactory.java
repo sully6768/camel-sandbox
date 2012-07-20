@@ -31,8 +31,24 @@ import org.apache.camel.util.ObjectHelper;
  */
 public class JmsObjectFactory {
 
+    public static Destination createDestination(Session session, String destinationName, boolean topic) throws Exception {
+    	if (topic) {
+    		return createTopic(session, destinationName);
+    	} else {
+    		return createQueue(session, destinationName);
+    	}
+    }
+
     public static Destination createQueue(Session session, String destinationName) throws Exception {
         return session.createQueue(destinationName);
+    }
+
+    public static Destination createTemporaryDestination(Session session, boolean topic) throws Exception {
+    	if (topic) {
+    		return session.createTemporaryTopic();	
+    	} else {
+    		return session.createTemporaryQueue();
+    	}
     }
 
     public static Destination createTopic(Session session, String destinationName) throws Exception {

@@ -87,4 +87,8 @@ public class InOnlyMessageHandler extends DefaultMessageHandler {
                     exchange.getExchangeId());
         }
     }
+    
+    @Override
+    public void close() {
+    }
 }

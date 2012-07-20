@@ -91,7 +91,7 @@ public class AsyncQueueProducerTest extends CamelTestSupport {
                         })
                         .to("sjms:queue:foo?synchronous=false");
 
-                from("sjms:queue:foo")
+                from("sjms:queue:foo?synchronous=false")
                         .to("mock:after")
                         .to("log:after")
                         .delay(1000)
