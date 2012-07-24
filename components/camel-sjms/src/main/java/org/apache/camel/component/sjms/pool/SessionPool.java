@@ -19,14 +19,10 @@ package org.apache.camel.component.sjms.pool;
 import javax.jms.Connection;
 import javax.jms.JMSException;
 import javax.jms.Session;
-import javax.jms.XAConnection;
 import javax.jms.XASession;
-import javax.transaction.RollbackException;
-import javax.transaction.Status;
-import javax.transaction.SystemException;
-import javax.transaction.TransactionManager;
 import javax.transaction.xa.XAResource;
 
+import org.apache.camel.component.sjms.ConnectionResource;
 import org.apache.camel.component.sjms.jms.SessionAcknowledgementType;
 
 /**
@@ -35,28 +31,17 @@ import org.apache.camel.component.sjms.jms.SessionAcknowledgementType;
  */
 public class SessionPool extends ObjectPool<Session> {
 
-    private ConnectionPool connectionPool;
+    private ConnectionResource connectionResource;
     private boolean transacted = false;
     private SessionAcknowledgementType acknowledgeMode = SessionAcknowledgementType.AUTO_ACKNOWLEDGE;
-    private TransactionManager transactionManager;
 
     /**
      * TODO Add Constructor Javadoc
      *
      */
-    public SessionPool(int poolSize, ConnectionPool connectionPool) {
+    public SessionPool(int poolSize, ConnectionResource connectionResource) {
         super(poolSize);
-        this.connectionPool = connectionPool;
-    }
-
-    /**
-     * TODO Add Constructor Javadoc
-     *
-     */
-    public SessionPool(int poolSize, ConnectionPool connectionPool, TransactionManager transactionManager) {
-        super(poolSize);
-        this.connectionPool = connectionPool;
-        this.transactionManager = transactionManager;
+        this.connectionResource = connectionResource;
     }
 
     /**
@@ -71,29 +56,9 @@ public class SessionPool extends ObjectPool<Session> {
     @Override
     protected Session createObject() throws Exception {
         Session session = null;
-        final Connection connection = getConnectionPool().borrowObject(5000);
+        final Connection connection = getConnectionResource().borrowConnection(5000);
         if(connection != null) {
-            if (isXa()) {
-                try {
-                    XAConnection xaconn = (XAConnection) connection;
-                    transacted = true;
-                    acknowledgeMode = SessionAcknowledgementType.SESSION_TRANSACTED;
-                    session = (XASession) xaconn.createXASession();
-//                        session.setIgnoreClose(true);
-//                        setIsXa(true);
-//                        transactionManager.getTransaction().registerSynchronization(new Synchronization((XASession) session));
-//                        incrementReferenceCount();
-                    transactionManager.getTransaction().enlistResource(createXaResource((XASession) session));
-                } catch (RollbackException e) {
-                    final JMSException jmsException = new JMSException("Rollback Exception");
-                    jmsException.initCause(e);
-                    throw jmsException;
-                } catch (SystemException e) {
-                    final JMSException jmsException = new JMSException("System Exception");
-                    jmsException.initCause(e);
-                    throw jmsException;
-                }
-            } else if (isLocalTransaction()) {
+            if (transacted) {
                 session = connection.createSession(transacted, Session.AUTO_ACKNOWLEDGE);
             } else {
                 switch (acknowledgeMode) {
@@ -110,16 +75,8 @@ public class SessionPool extends ObjectPool<Session> {
                 }
             }
         }
-        getConnectionPool().returnObject(connection);
+        getConnectionResource().returnConnection(connection);
         return session;
-    }
-
-    private boolean isXa() throws Exception {
-        return (transactionManager != null && transactionManager.getStatus() != Status.STATUS_NO_TRANSACTION);
-    }
-
-    private boolean isLocalTransaction() {
-        return (transactionManager == null && this.transacted);
     }
     
     @Override
@@ -127,7 +84,7 @@ public class SessionPool extends ObjectPool<Session> {
      // lets reset the session
         session.setMessageListener(null);
 
-        if (transacted && !isXa()) {
+        if (transacted) {
             try {
                 session.rollback();
             } catch (JMSException e) {
@@ -177,12 +134,12 @@ public class SessionPool extends ObjectPool<Session> {
     }
 
     /**
-     * Gets the ConnectionPool value of connectionPool for this instance of SessionPool.
+     * Gets the DefaultConnectionResource value of connectionResource for this instance of SessionPool.
      *
-     * @return the connectionPool
+     * @return the connectionResource
      */
-    public ConnectionPool getConnectionPool() {
-        return connectionPool;
+    public ConnectionResource getConnectionResource() {
+        return connectionResource;
     }
 
     protected XAResource createXaResource(XASession session) throws JMSException {

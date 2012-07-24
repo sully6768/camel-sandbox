@@ -17,11 +17,17 @@
 package org.apache.camel.component.sjms.support;
 
 import javax.jms.Connection;
+import javax.jms.Destination;
+import javax.jms.JMSException;
+import javax.jms.MessageProducer;
 import javax.jms.Session;
+import javax.jms.TextMessage;
 
 import org.apache.activemq.ActiveMQConnectionFactory;
+import org.apache.camel.CamelContext;
 import org.apache.camel.Produce;
 import org.apache.camel.ProducerTemplate;
+import org.apache.camel.component.sjms.SjmsComponent;
 import org.apache.camel.test.junit4.CamelTestSupport;
 
 /**
@@ -30,10 +36,14 @@ import org.apache.camel.test.junit4.CamelTestSupport;
  * @author sully6768
  */
 public class JmsTestSupport extends CamelTestSupport {
-
+	
+	static{
+		System.setProperty("org.apache.activemq.default.directory.prefix", "target/activemq/");
+	}
+	
     @Produce
     protected ProducerTemplate template;
-    protected ActiveMQConnectionFactory connectionFactory = new ActiveMQConnectionFactory("vm://broker?broker.persistent=false&broker.useJmx=false");
+    protected ActiveMQConnectionFactory connectionFactory = new ActiveMQConnectionFactory("vm://broker?broker.useJmx=false");
     private Connection connection;
     private Session session;
 
@@ -61,39 +71,44 @@ public class JmsTestSupport extends CamelTestSupport {
         }
         super.tearDown();
     }
-
-    /**
-     * Sets the Session value of session for this instance of JmsTestSupport.
+    
+    /*
+     * @see org.apache.camel.test.junit4.CamelTestSupport#createCamelContext()
      *
-     * @param session Sets Session, default is TODO add default
+     * @return
+     * @throws Exception
      */
+    @Override
+    protected CamelContext createCamelContext() throws Exception {
+        CamelContext camelContext = super.createCamelContext();
+        SjmsComponent component = new SjmsComponent();
+        component.setMaxConnections(1);
+        component.setConnectionFactory(connectionFactory);
+        camelContext.addComponent("sjms", component);
+        return camelContext;
+    }
+
+	protected void sendTextMessage(final String queueName, final String expectedBody) throws JMSException {
+		Session session = this.getSession();
+	    Destination queue = session.createQueue(queueName);
+	    MessageProducer producer = session.createProducer(queue);
+	    TextMessage txtMessage = session.createTextMessage();
+	    txtMessage.setText(expectedBody);
+	    producer.send(txtMessage);
+	}
+    
     public void setSession(Session session) {
         this.session = session;
     }
 
-    /**
-     * Gets the Session value of session for this instance of JmsTestSupport.
-     *
-     * @return the session
-     */
     public Session getSession() {
         return session;
     }
 
-    /**
-     * Sets the Connection value of connection for this instance of JmsTestSupport.
-     *
-     * @param connection Sets Connection, default is TODO add default
-     */
     public void setConnection(Connection connection) {
         this.connection = connection;
     }
 
-    /**
-     * Gets the Connection value of connection for this instance of JmsTestSupport.
-     *
-     * @return the connection
-     */
     public Connection getConnection() {
         return connection;
     }

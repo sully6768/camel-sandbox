@@ -28,10 +28,10 @@ import org.junit.Before;
 import org.junit.Test;
 
 /**
- * TODO Add Class documentation for ConnectionPoolTest
+ * TODO Add Class documentation for DefaultConnectionResourceTest
  * 
  */
-public class ConnectionPoolTest {
+public class DefaultConnectionResourceTest {
     private ActiveMQConnectionFactory connectionFactory;
 
     @Before
@@ -47,14 +47,14 @@ public class ConnectionPoolTest {
 
     /**
      * Test method for
-     * {@link org.apache.camel.component.sjms.pool.ConnectionPoolTest#createObject()}
+     * {@link org.apache.camel.component.sjms.pool.DefaultConnectionResourceTest#createObject()}
      * .
      * 
      * @throws Exception
      */
     @Test
     public void testCreateObject() throws Exception {
-        ConnectionPool pool = new ConnectionPool(1, connectionFactory);
+        DefaultConnectionResource pool = new DefaultConnectionResource(1, connectionFactory);
         pool.fillPool();
         assertNotNull(pool);
         ActiveMQConnection connection = (ActiveMQConnection) pool
@@ -66,14 +66,14 @@ public class ConnectionPoolTest {
 
     /**
      * Test method for
-     * {@link org.apache.camel.component.sjms.pool.ConnectionPoolTest#createObject()}
+     * {@link org.apache.camel.component.sjms.pool.DefaultConnectionResourceTest#createObject()}
      * .
      * 
      * @throws Exception
      */
     @Test
     public void testDestroyObject() throws Exception {
-        ConnectionPool pool = new ConnectionPool(1, connectionFactory);
+        DefaultConnectionResource pool = new DefaultConnectionResource(1, connectionFactory);
         pool.fillPool();
         assertNotNull(pool);
         ActiveMQConnection connection = (ActiveMQConnection) pool
@@ -92,7 +92,7 @@ public class ConnectionPoolTest {
      */
     @Test
     public void testBorrowObject() throws Exception {
-        ConnectionPool pool = new ConnectionPool(1, connectionFactory);
+        DefaultConnectionResource pool = new DefaultConnectionResource(1, connectionFactory);
         pool.fillPool();
         assertNotNull(pool);
         ActiveMQConnection connection = (ActiveMQConnection) pool.borrowObject();
@@ -112,7 +112,7 @@ public class ConnectionPoolTest {
      */
     @Test
     public void testReturnObject() throws Exception {
-        ConnectionPool pool = new ConnectionPool(1, connectionFactory);
+        DefaultConnectionResource pool = new DefaultConnectionResource(1, connectionFactory);
         pool.fillPool();
         assertNotNull(pool);
         ActiveMQConnection connection = (ActiveMQConnection) pool.borrowObject();

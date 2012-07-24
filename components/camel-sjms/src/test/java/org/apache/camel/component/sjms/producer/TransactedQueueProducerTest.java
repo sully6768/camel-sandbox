@@ -28,7 +28,6 @@ import org.apache.camel.CamelContext;
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.component.mock.MockEndpoint;
 import org.apache.camel.component.sjms.SjmsComponent;
-import org.apache.camel.component.sjms.SjmsComponentConfiguration;
 import org.apache.camel.component.sjms.jms.JmsObjectFactory;
 import org.apache.camel.component.sjms.support.JmsTestSupport;
 
@@ -149,10 +148,8 @@ public class TransactedQueueProducerTest extends JmsTestSupport {
     @Override
     protected CamelContext createCamelContext() throws Exception {
         CamelContext camelContext = super.createCamelContext();
-        SjmsComponentConfiguration config = new SjmsComponentConfiguration();
-        config.setMaxConnections(1);
         SjmsComponent component = new SjmsComponent();
-        component.setConfiguration(config);
+        component.setMaxConnections(1);
         component.setConnectionFactory(connectionFactory);
         camelContext.addComponent("sjms", component);
         return camelContext;

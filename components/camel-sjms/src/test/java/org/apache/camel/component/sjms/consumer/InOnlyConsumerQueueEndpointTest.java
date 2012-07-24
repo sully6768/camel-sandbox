@@ -16,50 +16,41 @@
  */
 package org.apache.camel.component.sjms.consumer;
 
+
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.component.mock.MockEndpoint;
 import org.apache.camel.component.sjms.support.JmsTestSupport;
 
 import org.junit.Test;
 
-public class InOnlyQueueConsumerTest extends JmsTestSupport {
-    
-    private static final String TEST_DESTINATION_NAME = "sjms:queue:in.only.queue.consumer.test";
-    
-    @Override
-    protected boolean useJmx() {
-    	return false;
-    }
+/**
+ * @version 
+ */
+public class InOnlyConsumerQueueEndpointTest extends JmsTestSupport {
+
+    public static final String QUEUE_NAME = "in.only.consumer.default";
+    private static final String SJMS_QUEUE_NAME = "sjms:queue:" + QUEUE_NAME;
+    private static final String MOCK_RESULT = "mock:result";
 
     @Test
-    public void testInOnlyQueueProducer() throws Exception {
+    public void testSynchronous() throws Exception {
         final String expectedBody = "Hello World";
-        MockEndpoint mock = getMockEndpoint("mock:test.done");
-
+        MockEndpoint mock = getMockEndpoint(MOCK_RESULT);
         mock.expectedMessageCount(1);
         mock.expectedBodiesReceived(expectedBody);
-
-        template.sendBody(TEST_DESTINATION_NAME, "World");
+        
+    	sendTextMessage(QUEUE_NAME,expectedBody);
         
         mock.assertIsSatisfied();
-
     }
 
-    /*
-     * @see org.apache.camel.test.junit4.CamelTestSupport#createRouteBuilder()
-     *
-     * @return
-     * @throws Exception
-     */
-    @Override
     protected RouteBuilder createRouteBuilder() throws Exception {
         return new RouteBuilder() {
-            public void configure() {
-
-                from(TEST_DESTINATION_NAME)
-                    .transform(body().prepend("Hello "))
-                    .to("log:test?showAll=true", "mock:test.done");
+            public void configure() throws Exception {
+                from(SJMS_QUEUE_NAME)
+                	.to(MOCK_RESULT);
             }
         };
     }
+
 }

@@ -135,7 +135,7 @@
                     <systemProperties>
                         <property>
                             <name>org.apache.activemq.default.directory.prefix</name>
-                            <value>target/</value>
+                            <value>target/activemq/</value>
                         </property>
                     </systemProperties>
                 </configuration>
@@ -160,7 +160,7 @@
                     <systemProperties>
                         <property>
                             <name>org.apache.activemq.default.directory.prefix</name>
-                            <value>target/</value>
+                            <value>target/activemq/</value>
                         </property>
                     </systemProperties>
                 </configuration>

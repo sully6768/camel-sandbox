@@ -21,7 +21,6 @@ import java.util.concurrent.Exchanger;
 import javax.jms.Message;
 import javax.jms.MessageListener;
 
-import org.apache.camel.component.sjms.pool.ConnectionPool;
 import org.apache.camel.component.sjms.pool.SessionPool;
 
 /**
@@ -31,7 +30,7 @@ import org.apache.camel.component.sjms.pool.SessionPool;
  */
 public interface SjmsMessageConsumer extends MessageListener {
     void handleMessage(Message message);
-    SjmsMessageConsumer createMessageConsumer(ConnectionPool connectionPool, String destinationName) throws Exception;
+    SjmsMessageConsumer createMessageConsumer(ConnectionResource connectionResource, String destinationName) throws Exception;
     SjmsMessageConsumer createMessageConsumerListener(SessionPool sessionPool, String destinationName, Exchanger<Object> exchanger) throws Exception;
     void destroyMessageConsumer() throws Exception;
 }

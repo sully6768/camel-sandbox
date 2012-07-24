@@ -26,18 +26,18 @@ import org.junit.Test;
 /**
  * @version 
  */
-public class InOutAsynchronousConsumerTest extends JmsTestSupport {
+public class InOutConsumerNamedReplyToTest extends JmsTestSupport {
 
     private static String beforeThreadName;
     private static String afterThreadName;
-    private String url = "sjms:queue:in?namedReplyTo=response.queue&synchronous=false";
+    private String url = "sjms:queue:in?namedReplyTo=response.queue";
 
     @Test
     public void testSynchronous() throws Exception {
         String reply = template.requestBody("direct:start", "Hello World", String.class);
         assertEquals("Bye World", reply);
 
-        assertTrue("Should use same threads", !beforeThreadName.equalsIgnoreCase(afterThreadName));
+        assertTrue("Should use same threads", beforeThreadName.equalsIgnoreCase(afterThreadName));
     }
 
     protected RouteBuilder createRouteBuilder() throws Exception {

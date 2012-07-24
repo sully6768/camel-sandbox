@@ -30,7 +30,7 @@ import org.junit.Before;
 import org.junit.Test;
 
 /**
- * TODO Add Class documentation for ConnectionPoolTest
+ * TODO Add Class documentation for DefaultConnectionResourceTest
  * 
  */
 public class SessionPoolTest {
@@ -56,7 +56,7 @@ public class SessionPoolTest {
      */
     @Test
     public void testCreateObject() throws Exception {
-        ConnectionPool connections = new ConnectionPool(1, connectionFactory);
+        DefaultConnectionResource connections = new DefaultConnectionResource(1, connectionFactory);
         connections.fillPool();
         SessionPool sessions = new SessionPool(1, connections);
         sessions.fillPool();
@@ -75,7 +75,7 @@ public class SessionPoolTest {
      */
     @Test
     public void testBorrowObject() throws Exception {
-        ConnectionPool connections = new ConnectionPool(1, connectionFactory);
+        DefaultConnectionResource connections = new DefaultConnectionResource(1, connectionFactory);
         connections.fillPool();
         SessionPool sessions = new SessionPool(1, connections);
         sessions.fillPool();
@@ -99,7 +99,7 @@ public class SessionPoolTest {
      */
     @Test
     public void testReturnObject() throws Exception {
-        ConnectionPool connections = new ConnectionPool(1, connectionFactory);
+        DefaultConnectionResource connections = new DefaultConnectionResource(1, connectionFactory);
         connections.fillPool();
         SessionPool sessions = new SessionPool(1, connections);
         sessions.fillPool();

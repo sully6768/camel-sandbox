@@ -174,7 +174,7 @@ public class DefaultConsumer extends SjmsConsumer {
 
     private MessageConsumerResources createConsumerWithDedicatedSession()
             throws Exception {
-        Connection conn = getConnectionPool().borrowObject();
+        Connection conn = getConnectionPool().borrowConnection();
         Session session = null;
         if (isEndpointTransacted()) {
             session = conn.createSession(true, Session.SESSION_TRANSACTED);
@@ -191,7 +191,7 @@ public class DefaultConsumer extends SjmsConsumer {
         }
         MessageListener handler = createMessageHandler(session);
         messageConsumer.setMessageListener(handler);
-        getConnectionPool().returnObject(conn);
+        getConnectionPool().returnConnection(conn);
         return new MessageConsumerResources(session, messageConsumer);
     }
 

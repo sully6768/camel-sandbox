@@ -33,9 +33,13 @@ import org.slf4j.LoggerFactory;
  */
 public abstract class SjmsConnectionTestSupport {
 
+	static{
+		System.setProperty("org.apache.activemq.default.directory.prefix", "target/activemq/");
+	}
+	
     protected Logger logger = LoggerFactory.getLogger(getClass());
 
-    public static final String VM_BROKER_CONNECT_STRING = "vm://broker?broker.persistent=false";
+    public static final String VM_BROKER_CONNECT_STRING = "vm://broker";
     public static final String TCP_BROKER_CONNECT_STRING = "tcp://localhost:61616";
     private ActiveMQConnectionFactory vmTestConnectionFactory;
     private ActiveMQConnectionFactory testConnectionFactory;

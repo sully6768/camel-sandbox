@@ -74,7 +74,7 @@ public class InOutProducer extends SjmsProducer {
 
         @Override
         protected MessageConsumerResource createObject() throws Exception {
-            Connection conn = getConnectionPool().borrowObject(5000);
+            Connection conn = getConnectionPool().borrowConnection(5000);
             Session session = conn.createSession(false, getAcknowledgeMode());
             MessageConsumer messageConsumer = JmsObjectFactory.createQueueConsumer(session, getNamedReplyTo());
 
@@ -96,7 +96,7 @@ public class InOutProducer extends SjmsProducer {
 //            if(! isSynchronous()) {
 //            	messageConsumer.setMessageListener(new InternalMessageListener());
 //            }
-            getConnectionPool().returnObject(conn);
+            getConnectionPool().returnConnection(conn);
             MessageConsumerResource mcm = new MessageConsumerResource(session, messageConsumer);
             return mcm;
         }
@@ -242,11 +242,11 @@ public class InOutProducer extends SjmsProducer {
     }
     
     public MessageProducerResources doCreateProducerModel() throws Exception {
-        Connection conn = getConnectionPool().borrowObject(5000);
+        Connection conn = getConnectionPool().borrowConnection();
         Session session = conn.createSession(false, getAcknowledgeMode());
         MessageProducer messageProducer = null;
         messageProducer = JmsObjectFactory.createQueueProducer(session, getDestinationName());
-        getConnectionPool().returnObject(conn);
+        getConnectionPool().returnConnection(conn);
         return new MessageProducerResources(session, messageProducer);
     }
     

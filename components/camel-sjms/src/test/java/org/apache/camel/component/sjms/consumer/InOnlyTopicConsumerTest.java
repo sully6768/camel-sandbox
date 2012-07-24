@@ -16,11 +16,8 @@
  */
 package org.apache.camel.component.sjms.consumer;
 
-import org.apache.camel.CamelContext;
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.component.mock.MockEndpoint;
-import org.apache.camel.component.sjms.SjmsComponent;
-import org.apache.camel.component.sjms.SjmsComponentConfiguration;
 import org.apache.camel.component.sjms.support.JmsTestSupport;
 
 import org.junit.Test;
@@ -46,24 +43,6 @@ public class InOnlyTopicConsumerTest extends JmsTestSupport {
         
         mock.assertIsSatisfied();
 
-    }
-    
-    /*
-     * @see org.apache.camel.test.junit4.CamelTestSupport#createCamelContext()
-     *
-     * @return
-     * @throws Exception
-     */
-    @Override
-    protected CamelContext createCamelContext() throws Exception {
-        CamelContext camelContext = super.createCamelContext();
-        SjmsComponentConfiguration config = new SjmsComponentConfiguration();
-        config.setMaxConnections(1);
-        SjmsComponent component = new SjmsComponent();
-        component.setConfiguration(config);
-        component.setConnectionFactory(connectionFactory);
-        camelContext.addComponent("sjms", component);
-        return camelContext;
     }
 
     /*

@@ -23,19 +23,26 @@ import javax.jms.ConnectionFactory;
 import org.apache.camel.CamelException;
 import org.apache.camel.Endpoint;
 import org.apache.camel.ExchangePattern;
+import org.apache.camel.component.sjms.pool.DefaultConnectionResource;
 import org.apache.camel.impl.DefaultComponent;
 import org.apache.camel.spi.HeaderFilterStrategy;
 import org.apache.camel.spi.HeaderFilterStrategyAware;
 import org.apache.camel.util.ObjectHelper;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 /**
  * Represents the component that manages {@link SimpleJmsEndpoint}.
  */
 public class SjmsComponent extends DefaultComponent implements HeaderFilterStrategyAware {
+    private static final transient Logger LOGGER = LoggerFactory.getLogger(SjmsComponent.class);
 
     private ConnectionFactory connectionFactory;
-    private SjmsComponentConfiguration configuration;
+    private ConnectionResource connectionResource;
     private HeaderFilterStrategy headerFilterStrategy = new SjmsHeaderFilterStrategy();
+    private SjmsKeyFormatStrategy keyFormatStrategy;
+    private Integer maxConnections = 1;
 
     @Override
     protected Endpoint createEndpoint(String uri, String remaining,
@@ -69,7 +76,6 @@ public class SjmsComponent extends DefaultComponent implements HeaderFilterStrat
         }
         if (ObjectHelper.isEmpty(protocol)) {
         	protocol = "queue";
-//        	tempUri = tempUri.substring(protocol.length() + 1);
         } else if (protocol.equals("queue") || protocol.equals("topic")) {
         	tempUri = tempUri.substring(protocol.length() + 1);
         } else {
@@ -98,10 +104,24 @@ public class SjmsComponent extends DefaultComponent implements HeaderFilterStrat
     @Override
     protected void doStart() throws Exception {
         super.doStart();
+        
+        LOGGER.debug("Verify ConnectionResource");
+        if (getConnectionResource() == null) {
+        	LOGGER.debug("No ConnectionResource provided.  Initialize the DefaultConnectionResource.");
+            // We always use a connection pool, even for a pool of 1
+            DefaultConnectionResource connections = new DefaultConnectionResource(getMaxConnections(), getConnectionFactory());
+            connections.fillPool();
+            setConnectionResource(connections);
+        }
     }
 
     @Override
     protected void doStop() throws Exception {
+    	if (getConnectionResource() != null) {
+            if (getConnectionResource() instanceof DefaultConnectionResource) {
+                ((DefaultConnectionResource)getConnectionResource()).drainPool();
+            }
+    	}
         super.doStop();
     }
 
@@ -113,8 +133,7 @@ public class SjmsComponent extends DefaultComponent implements HeaderFilterStrat
      *            Sets ConnectionFactory, default is TODO add default
      */
     public void setConnectionFactory(ConnectionFactory connectionFactory) {
-        if(getConfiguration().getConnectionFactory() == null)
-            getConfiguration().setConnectionFactory(connectionFactory);
+        this.connectionFactory = connectionFactory;
     }
 
     /**
@@ -127,31 +146,6 @@ public class SjmsComponent extends DefaultComponent implements HeaderFilterStrat
         return connectionFactory;
     }
 
-    /**
-     * Sets the SjmsComponentConfiguration value of configuration for this
-     * instance of SjmsComponent.
-     * 
-     * @param configuration
-     *            Sets SjmsComponentConfiguration, default is TODO add
-     *            default
-     */
-    public void setConfiguration(SjmsComponentConfiguration configuration) {
-        this.configuration = configuration;
-    }
-
-    /**
-     * Gets the SjmsComponentConfiguration value of configuration for this
-     * instance of SjmsComponent.
-     * 
-     * @return the configuration
-     */
-    public SjmsComponentConfiguration getConfiguration() {
-        if (configuration == null) {
-            configuration = new SjmsComponentConfiguration();
-        }
-        return configuration;
-    }
-
     @Override
     public HeaderFilterStrategy getHeaderFilterStrategy() {
         return this.headerFilterStrategy;
@@ -161,4 +155,28 @@ public class SjmsComponent extends DefaultComponent implements HeaderFilterStrat
     public void setHeaderFilterStrategy(HeaderFilterStrategy headerFilterStrategy) {
         this.headerFilterStrategy = headerFilterStrategy;
     }
+
+	public void setConnectionResource(ConnectionResource connectionResource) {
+		this.connectionResource = connectionResource;
+	}
+
+	public ConnectionResource getConnectionResource() {
+		return connectionResource;
+	}
+
+	public void setMaxConnections(Integer maxConnections) {
+		this.maxConnections = maxConnections;
+	}
+
+	public Integer getMaxConnections() {
+		return maxConnections;
+	}
+
+	public void setKeyFormatStrategy(SjmsKeyFormatStrategy keyFormatStrategy) {
+		this.keyFormatStrategy = keyFormatStrategy;
+	}
+
+	public SjmsKeyFormatStrategy getKeyFormatStrategy() {
+		return keyFormatStrategy;
+	}
 }

@@ -16,12 +16,9 @@
  */
 package org.apache.camel.component.sjms.consumer;
 
-import org.apache.camel.CamelContext;
 import org.apache.camel.Exchange;
 import org.apache.camel.Processor;
 import org.apache.camel.builder.RouteBuilder;
-import org.apache.camel.component.sjms.SjmsComponent;
-import org.apache.camel.component.sjms.SjmsComponentConfiguration;
 import org.apache.camel.component.sjms.support.JmsTestSupport;
 
 import org.junit.Test;
@@ -41,17 +38,6 @@ public class InOutSynchronousConsumerTest extends JmsTestSupport {
         assertEquals("Bye World", reply);
 
         assertTrue("Should use same threads", beforeThreadName.equalsIgnoreCase(afterThreadName));
-    }
-    @Override
-    protected CamelContext createCamelContext() throws Exception {
-        CamelContext camelContext = super.createCamelContext();
-        SjmsComponentConfiguration config = new SjmsComponentConfiguration();
-        config.setMaxConnections(1);
-        SjmsComponent component = new SjmsComponent();
-        component.setConfiguration(config);
-        component.setConnectionFactory(connectionFactory);
-        camelContext.addComponent("sjms", component);
-        return camelContext;
     }
 
     protected RouteBuilder createRouteBuilder() throws Exception {

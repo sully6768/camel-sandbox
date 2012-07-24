@@ -21,7 +21,6 @@ import java.util.UUID;
 
 import org.apache.camel.Endpoint;
 import org.apache.camel.Processor;
-import org.apache.camel.component.sjms.pool.ConnectionPool;
 import org.apache.camel.component.sjms.pool.SessionPool;
 import org.apache.camel.impl.DefaultConsumer;
 
@@ -41,8 +40,8 @@ public class SjmsConsumer extends DefaultConsumer {
         return (SjmsEndpoint)this.getEndpoint();
     }
     
-    protected ConnectionPool getConnectionPool() {
-        return getSjmsEndpoint().getConnections();
+    protected ConnectionResource getConnectionPool() {
+        return getSjmsEndpoint().getConnectionResource();
     }
     
     protected SessionPool getSessionPool() {

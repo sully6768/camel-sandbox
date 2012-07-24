@@ -19,13 +19,14 @@ package org.apache.camel.component.sjms.pool;
 import javax.jms.Connection;
 import javax.jms.ConnectionFactory;
 
+import org.apache.camel.component.sjms.ConnectionResource;
 import org.apache.camel.util.ObjectHelper;
 
 /**
- * TODO Add Class documentation for ConnectionPool
+ * TODO Add Class documentation for DefaultConnectionResource
  * 
  */
-public class ConnectionPool extends ObjectPool<Connection> {
+public class DefaultConnectionResource extends ObjectPool<Connection> implements ConnectionResource {
     private ConnectionFactory connectionFactory;
     private String username;
     private String password;
@@ -37,7 +38,7 @@ public class ConnectionPool extends ObjectPool<Connection> {
      * @param poolSize
      * @param connectionFactory
      */
-    public ConnectionPool(int poolSize, ConnectionFactory connectionFactory) {
+    public DefaultConnectionResource(int poolSize, ConnectionFactory connectionFactory) {
     	this(poolSize, connectionFactory, null, null);
     }
 
@@ -49,11 +50,26 @@ public class ConnectionPool extends ObjectPool<Connection> {
      * @param username
      * @param password
      */
-    public ConnectionPool(int poolSize, ConnectionFactory connectionFactory, String username, String password) {
+    public DefaultConnectionResource(int poolSize, ConnectionFactory connectionFactory, String username, String password) {
         super(poolSize);
         this.connectionFactory = connectionFactory;
         this.username = username;
         this.password = password;
+    }
+    
+    @Override
+    public Connection borrowConnection() throws Exception {
+    	return this.borrowObject();
+    }
+    
+    @Override
+    public Connection borrowConnection(long timeout) throws Exception {
+    	return this.borrowObject(timeout);
+    }
+    
+    @Override
+    public void returnConnection(Connection connection) throws Exception {
+    	returnObject(connection);
     }
 
     @Override
@@ -85,7 +101,7 @@ public class ConnectionPool extends ObjectPool<Connection> {
 
     /**
      * Sets the ConnectionFactory value of connectionFactory for this instance
-     * of ConnectionPool.
+     * of DefaultConnectionResource.
      * 
      * @param connectionFactory
      *            Sets ConnectionFactory, default is null
@@ -96,7 +112,7 @@ public class ConnectionPool extends ObjectPool<Connection> {
 
     /**
      * Gets the ConnectionFactory value of connectionFactory for this instance
-     * of ConnectionPool.
+     * of DefaultConnectionResource.
      * 
      * @return the connectionFactory
      */
@@ -105,7 +121,7 @@ public class ConnectionPool extends ObjectPool<Connection> {
     }
 
     /**
-     * Gets the String value of username for this instance of ConnectionPool.
+     * Gets the String value of username for this instance of DefaultConnectionResource.
      *
      * @return the username
      */
@@ -114,7 +130,7 @@ public class ConnectionPool extends ObjectPool<Connection> {
     }
 
     /**
-     * Gets the String value of password for this instance of ConnectionPool.
+     * Gets the String value of password for this instance of DefaultConnectionResource.
      *
      * @return the password
      */
@@ -123,7 +139,7 @@ public class ConnectionPool extends ObjectPool<Connection> {
     }
 
     /**
-     * Sets the String value of clientId for this instance of ConnectionPool.
+     * Sets the String value of clientId for this instance of DefaultConnectionResource.
      *
      * @param clientId Sets String, default is TODO add default
      */
@@ -132,7 +148,7 @@ public class ConnectionPool extends ObjectPool<Connection> {
     }
 
     /**
-     * Gets the String value of clientId for this instance of ConnectionPool.
+     * Gets the String value of clientId for this instance of DefaultConnectionResource.
      *
      * @return the clientId
      */

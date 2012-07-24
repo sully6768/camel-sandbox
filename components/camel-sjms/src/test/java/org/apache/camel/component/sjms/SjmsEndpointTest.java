@@ -21,9 +21,6 @@ import org.apache.camel.CamelContext;
 import org.apache.camel.Endpoint;
 import org.apache.camel.ExchangePattern;
 import org.apache.camel.ResolveEndpointFailedException;
-import org.apache.camel.component.sjms.SjmsComponent;
-import org.apache.camel.component.sjms.SjmsComponentConfiguration;
-import org.apache.camel.component.sjms.SjmsEndpoint;
 import org.apache.camel.test.junit4.CamelTestSupport;
 
 import org.junit.Test;
@@ -147,10 +144,8 @@ public class SjmsEndpointTest extends CamelTestSupport {
 
         ActiveMQConnectionFactory connectionFactory = new ActiveMQConnectionFactory(
                 "vm://broker?broker.persistent=false&broker.useJmx=false");
-        SjmsComponentConfiguration config = new SjmsComponentConfiguration();
-        config.setMaxConnections(3);
         SjmsComponent component = new SjmsComponent();
-        component.setConfiguration(config);
+        component.setMaxConnections(3);
         component.setConnectionFactory(connectionFactory);
         camelContext.addComponent("sjms", component);
 

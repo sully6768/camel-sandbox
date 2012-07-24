@@ -46,7 +46,7 @@ public class InOnlyProducer extends SjmsProducer {
      * @throws Exception
      */
     public MessageProducerResources doCreateProducerModel() throws Exception {
-        Connection conn = getConnectionPool().borrowObject();
+        Connection conn = getConnectionPool().borrowConnection();
         Session session = null;
         if (isEndpointTransacted()) {
             session = conn.createSession(true, getAcknowledgeMode());
@@ -60,7 +60,7 @@ public class InOnlyProducer extends SjmsProducer {
         } else {
             messageProducer = JmsObjectFactory.createQueueProducer(session, getDestinationName());
         }
-        getConnectionPool().returnObject(conn);
+        getConnectionPool().returnConnection(conn);
         return new MessageProducerResources(session, messageProducer);
     }
     

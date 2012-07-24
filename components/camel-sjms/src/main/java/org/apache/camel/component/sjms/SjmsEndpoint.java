@@ -25,11 +25,11 @@ import org.apache.camel.Producer;
 import org.apache.camel.RuntimeCamelException;
 import org.apache.camel.component.sjms.consumer.DefaultConsumer;
 import org.apache.camel.component.sjms.jms.SessionAcknowledgementType;
-import org.apache.camel.component.sjms.pool.ConnectionPool;
 import org.apache.camel.component.sjms.pool.SessionPool;
 import org.apache.camel.component.sjms.producer.InOnlyProducer;
 import org.apache.camel.component.sjms.producer.InOutProducer;
 import org.apache.camel.impl.DefaultEndpoint;
+import org.apache.camel.spi.HeaderFilterStrategy;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,10 +42,7 @@ public class SjmsEndpoint extends DefaultEndpoint implements MultipleConsumersSu
     protected final transient Logger logger = LoggerFactory
             .getLogger(getClass());
 
-    private SjmsComponentConfiguration configuration;
-    private ConnectionPool connections;
     private SessionPool sessions;
-    private SjmsMessageConsumer sjmsMessageConsumer;
     private boolean synchronous = true;
     private boolean transacted = false;
     private String namedReplyTo;
@@ -75,20 +72,11 @@ public class SjmsEndpoint extends DefaultEndpoint implements MultipleConsumersSu
         if (isTransacted()) {
             setAcknowledgementMode(SessionAcknowledgementType.SESSION_TRANSACTED);
         }
-        setConfiguration(((SjmsComponent)component).getConfiguration());
     }
     
     @Override
     protected void doStart() throws Exception {
         super.doStart();
-        
-        // Start with some parameter validation and overriding
-        // First check for 
-        
-        // We always use a connection pool, even for a pool of 1
-        connections = new ConnectionPool(getConfiguration()
-                .getMaxConnections(), getConfiguration().getConnectionFactory());
-        connections.fillPool();
         
         //
         // TODO since we only need a session pool for one use case, find a better way
@@ -97,7 +85,7 @@ public class SjmsEndpoint extends DefaultEndpoint implements MultipleConsumersSu
         // Transacted listeners or producers need to be paired with the
         // Session that created them.
         if( ! isTransacted()) {
-            sessions = new SessionPool(getSessionCount(), getConnections());
+            sessions = new SessionPool(getSessionCount(), getConnectionResource());
             
             // TODO fix the string hack
             sessions.setAcknowledgeMode(SessionAcknowledgementType
@@ -111,7 +99,6 @@ public class SjmsEndpoint extends DefaultEndpoint implements MultipleConsumersSu
         if (getSessions() != null) {
             getSessions().drainPool();
         }
-        getConnections().drainPool();
         super.doStop();
     }
 
@@ -141,48 +128,29 @@ public class SjmsEndpoint extends DefaultEndpoint implements MultipleConsumersSu
         return true;
     }
 
-    /**
-     * @param endpoint
-     */
     public String getDestinationName() {
         return getEndpointUri()
                 .substring(getEndpointUri().lastIndexOf(":") + 1);
     }
-    
-    public void setConfiguration(SjmsComponentConfiguration configuration) {
-        this.configuration = configuration;
+
+    public SjmsComponent getSjmsComponent() {
+        return (SjmsComponent) this.getComponent();
     }
 
-    public SjmsComponentConfiguration getConfiguration() {
-        return configuration;
+	public ConnectionResource getConnectionResource() {
+		return this.getSjmsComponent().getConnectionResource();
+	}
+
+    public HeaderFilterStrategy getSjmsHeaderFilterStrategy() {
+        return getSjmsComponent().getHeaderFilterStrategy();
     }
 
-    public void setConnections(ConnectionPool connections) {
-        this.connections = connections;
-    }
-
-    public ConnectionPool getConnections() {
-        return connections;
+    public SjmsKeyFormatStrategy getJmsKeyFormatStrategy() {
+        return getSjmsComponent().getKeyFormatStrategy();
     }
 
     public SessionPool getSessions() {
         return sessions;
-    }
-
-    public SjmsHeaderFilterStrategy getSjmsHeaderFilterStrategy() {
-        return getConfiguration().getSjmsHeaderFilterStrategy();
-    }
-
-    public SjmsKeyFormatStrategy getJmsKeyFormatStrategy() {
-        return getConfiguration().getJmsKeyFormatStrategy();
-    }
-
-    public void setMessageHandler(SjmsMessageConsumer sjmsMessageConsumer) {
-        this.sjmsMessageConsumer = sjmsMessageConsumer;
-    }
-
-    public SjmsMessageConsumer getMessageHandler() {
-        return sjmsMessageConsumer;
     }
 
     public void setSynchronous(boolean asyncConsumer) {

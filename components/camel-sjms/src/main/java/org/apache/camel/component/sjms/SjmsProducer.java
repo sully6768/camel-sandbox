@@ -24,7 +24,6 @@ import javax.jms.Session;
 import org.apache.camel.AsyncCallback;
 import org.apache.camel.Endpoint;
 import org.apache.camel.Exchange;
-import org.apache.camel.component.sjms.pool.ConnectionPool;
 import org.apache.camel.component.sjms.pool.ObjectPool;
 import org.apache.camel.impl.DefaultAsyncProducer;
 import org.apache.camel.util.ObjectHelper;
@@ -190,8 +189,8 @@ public abstract class SjmsProducer extends DefaultAsyncProducer  {
         return (SjmsEndpoint)this.getEndpoint();
     }
     
-    protected ConnectionPool getConnectionPool() {
-        return getSjmsEndpoint().getConnections();
+    protected ConnectionResource getConnectionPool() {
+        return getSjmsEndpoint().getConnectionResource();
     }
     
     /**

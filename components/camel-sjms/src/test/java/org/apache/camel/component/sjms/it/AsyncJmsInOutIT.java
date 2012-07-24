@@ -18,13 +18,9 @@ package org.apache.camel.component.sjms.it;
 
 import java.util.concurrent.TimeUnit;
 
-import org.apache.activemq.ActiveMQConnectionFactory;
-import org.apache.camel.CamelContext;
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.component.mock.MockEndpoint;
-import org.apache.camel.component.sjms.SjmsComponent;
-import org.apache.camel.component.sjms.SjmsComponentConfiguration;
-import org.apache.camel.test.junit4.CamelTestSupport;
+import org.apache.camel.component.sjms.support.JmsTestSupport;
 import org.apache.camel.util.StopWatch;
 
 import org.junit.Test;
@@ -32,7 +28,7 @@ import org.junit.Test;
 /**
  * @version 
  */
-public class AsyncJmsInOutIT extends CamelTestSupport {
+public class AsyncJmsInOutIT extends JmsTestSupport {
 
     @Test
     public void testAsyncJmsInOut() throws Exception {
@@ -50,20 +46,6 @@ public class AsyncJmsInOutIT extends CamelTestSupport {
         assertMockEndpointsSatisfied(20, TimeUnit.SECONDS);
 
         log.info("Took " + watch.stop() + " ms. to process 100 messages request/reply over JMS");
-    }
-
-    protected CamelContext createCamelContext() throws Exception {
-        CamelContext camelContext = super.createCamelContext();
-
-        ActiveMQConnectionFactory connectionFactory = new ActiveMQConnectionFactory(
-                "vm://broker?broker.persistent=false");
-        SjmsComponentConfiguration config = new SjmsComponentConfiguration();
-        config.setConnectionFactory(connectionFactory);
-        SjmsComponent component = new SjmsComponent();
-        component.setConfiguration(config);
-        camelContext.addComponent("sjms", component);
-
-        return camelContext;
     }
 
     @Override
