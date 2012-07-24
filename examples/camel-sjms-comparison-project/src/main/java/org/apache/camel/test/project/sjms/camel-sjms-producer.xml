@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="
+       http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+       http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd">
+
+	<camelContext id="camel" xmlns="http://camel.apache.org/schema/spring">
+		<route>
+			<from uri="direct:invokeJmsCamelQueue" />
+<!--             <to uri="sjms:queue:jmsSjmsCamelQueue?namedReplyTo=jmsSjmsCamelQueue.response" -->
+<!--                 pattern="InOut" /> -->
+<!--             <to uri="sjms:queue:jmsSjmsCamelQueue?namedReplyTo=jmsSjmsCamelQueue.response&amp;consumerCount=1&amp;producerCount=1&amp;synchronous=false" -->
+<!--                 pattern="InOut" /> -->
+<!--             <to uri="sjms:queue:jmsSjmsCamelQueue?namedReplyTo=jmsSjmsCamelQueue.response&amp;consumerCount=1&amp;producerCount=1&amp;synchronous=true" -->
+<!--                 pattern="InOut" /> -->
+            <to uri="sjms:queue:jmsSjmsCamelQueue?namedReplyTo=jmsSjmsCamelQueue.response&amp;consumerCount=1&amp;producerCount=1&amp;synchronous=true"
+                pattern="InOut" />
+<!--             <to uri="sjms:queue:jmsSjmsCamelQueue?namedReplyTo=jmsSjmsCamelQueue.response&amp;consumerCount=5&amp;producerCount=5&amp;synchronous=false" -->
+<!--                 pattern="InOut" /> -->
+<!-- 			<to uri="sjms:queue:jmsSjmsCamelQueue?exchangePattern=InOut&amp;namedReplyTo=jmsSjmsCamelQueue.response&amp;consumerCount=10&amp;producerCount=10&amp;synchronous=true" -->
+<!-- 				pattern="InOut" /> -->
+		</route>
+	</camelContext>
+
+
+    <bean
+        id="sjms"
+        class="org.apache.camel.component.sjms.SjmsComponent">
+        <property name="configuration">
+            <bean class="org.apache.camel.component.sjms.SjmsComponentConfiguration">
+                <property name="connectionFactory">
+                    <bean class="org.apache.activemq.ActiveMQConnectionFactory">
+                        <property
+                            name="brokerURL"
+                            value="tcp://localhost:61616" />
+                    </bean>
+                </property>
+                <property name="maxConnections" value="1" />
+            </bean>
+        </property>
+    </bean>
+
+</beans>
