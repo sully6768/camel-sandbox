@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans
+    xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="
+       http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+       http://camel.apache.org/schema/spring http://camel.apache.org/schema/spring/camel-spring.xsd">
+
+    <bean
+        id="myService"
+        class="org.apache.camel.test.project.sjms.CamelSjmsRequestReply.MyService" />
+
+    <camelContext
+        xmlns="http://camel.apache.org/schema/spring">
+        <route>
+            <from
+                uri="sjms:queue:jmsSjmsCamelQueue?exchangePattern=InOut&amp;consumerCount=1&amp;synchronous=true"/>
+<!--             <from -->
+<!--                 uri="sjms:queue:jmsSjmsCamelQueue?exchangePattern=InOut&amp;consumerCount=10&amp;synchronous=true"/> -->
+            <to
+                uri="bean:myService" />
+        </route>
+    </camelContext>
+
+    <bean
+        id="sjms"
+        class="org.apache.camel.component.sjms.SjmsComponent">
+        <property name="configuration">
+            <bean class="org.apache.camel.component.sjms.SjmsComponentConfiguration">
+                <property name="connectionFactory">
+                    <bean class="org.apache.activemq.ActiveMQConnectionFactory">
+                        <property
+                            name="brokerURL"
+                            value="tcp://localhost:61616" />
+                    </bean>
+                </property>
+                <property name="maxConnections" value="1" />
+            </bean>
+        </property>
+    </bean>
+
+
+</beans>
