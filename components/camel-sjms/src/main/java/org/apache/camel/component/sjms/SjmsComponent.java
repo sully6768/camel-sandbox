@@ -26,6 +26,7 @@ import org.apache.camel.ExchangePattern;
 import org.apache.camel.impl.DefaultComponent;
 import org.apache.camel.spi.HeaderFilterStrategy;
 import org.apache.camel.spi.HeaderFilterStrategyAware;
+import org.apache.camel.util.ObjectHelper;
 
 /**
  * Represents the component that manages {@link SimpleJmsEndpoint}.
@@ -36,9 +37,11 @@ public class SjmsComponent extends DefaultComponent implements HeaderFilterStrat
     private SjmsComponentConfiguration configuration;
     private HeaderFilterStrategy headerFilterStrategy = new SjmsHeaderFilterStrategy();
 
+    @Override
     protected Endpoint createEndpoint(String uri, String remaining,
             Map<String, Object> parameters) throws Exception {
         validateMepAndReplyTo(parameters);
+        uri = normalizeSjmsUri(uri);
         SjmsEndpoint endpoint = new SjmsEndpoint(uri, this);
         setProperties(endpoint, parameters);
         if(endpoint.isTransacted()) {
@@ -46,6 +49,37 @@ public class SjmsComponent extends DefaultComponent implements HeaderFilterStrat
         }
         return endpoint;
     }
+
+	/**
+	 * Helper method used to 
+	 * @param uri
+	 * @return
+	 * @throws Exception 
+	 */
+	private String normalizeSjmsUri(String uri) throws Exception {
+		String tempUri = uri;
+        String endpointName = tempUri.substring(0, tempUri.indexOf(":"));
+        tempUri = tempUri.substring(endpointName.length());
+        if (tempUri.startsWith("://")) {
+        	tempUri = tempUri.substring(3);
+        }
+        String protocol = null;
+        if (tempUri.indexOf(":") > 0) {
+        	protocol = tempUri.substring(0, tempUri.indexOf(":"));
+        }
+        if (ObjectHelper.isEmpty(protocol)) {
+        	protocol = "queue";
+//        	tempUri = tempUri.substring(protocol.length() + 1);
+        } else if (protocol.equals("queue") || protocol.equals("topic")) {
+        	tempUri = tempUri.substring(protocol.length() + 1);
+        } else {
+        	throw new Exception("Unsupported Protocol: " + protocol);
+        }
+        
+        String path = tempUri;
+        uri = endpointName + "://" + protocol + ":" + path;
+		return uri;
+	}
     
     private void validateMepAndReplyTo(Map<String, Object> parameters) throws Exception {
         boolean namedReplyToSet = parameters.containsKey("namedReplyTo");

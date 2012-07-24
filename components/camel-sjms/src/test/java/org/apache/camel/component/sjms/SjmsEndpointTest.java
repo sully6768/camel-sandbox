@@ -30,19 +30,31 @@ import org.junit.Test;
 
 public class SjmsEndpointTest extends CamelTestSupport {
     
-    public SjmsEndpointTest() {
-    	enableJMX();
-	}
-    
     @Override
     protected boolean useJmx() {
     	return true;
     }
 
     @Test
+    public void testDefaults() throws Exception {
+        Endpoint endpoint = context.getEndpoint("sjms:test");
+        assertNotNull(endpoint);
+        assertTrue(endpoint instanceof SjmsEndpoint);
+        SjmsEndpoint sjms = (SjmsEndpoint) endpoint;
+        assertEquals(sjms.getEndpointUri(), "sjms://queue:test");
+        assertEquals(sjms.createExchange().getPattern(), ExchangePattern.InOnly);
+    }
+
+    @Test(expected=ResolveEndpointFailedException.class)
+    public void testUnsupportedProtocol() throws Exception {
+        context.getEndpoint("sjms:bad-queue:test");
+    }
+
+    @Test
     public void testQueueEndpoint() throws Exception {
         Endpoint sjms = context.getEndpoint("sjms:queue:test");
         assertNotNull(sjms);
+        assertEquals(sjms.getEndpointUri(), "sjms://queue:test");
         assertTrue(sjms instanceof SjmsEndpoint);
     }
 
