@@ -3,7 +3,7 @@ Camel SJMS Project (sjms)
 This project aims to create a Camel JMS component that relies strictly on the Java JMS API to 
 provide robust and scalable JMS to Camel without the need for additional 3rd party APIs.
 
-Basic Goals
+Goals
 -----------
 * JMS Queue & Temporary Queue Support
 * JMS Topic Support
