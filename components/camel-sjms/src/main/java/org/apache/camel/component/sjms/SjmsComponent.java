@@ -41,7 +41,7 @@ public class SjmsComponent extends DefaultComponent implements HeaderFilterStrat
     private ConnectionFactory connectionFactory;
     private ConnectionResource connectionResource;
     private HeaderFilterStrategy headerFilterStrategy = new SjmsHeaderFilterStrategy();
-    private SjmsKeyFormatStrategy keyFormatStrategy;
+    private KeyFormatStrategy keyFormatStrategy;
     private Integer maxConnections = 1;
 
     @Override
@@ -172,11 +172,11 @@ public class SjmsComponent extends DefaultComponent implements HeaderFilterStrat
 		return maxConnections;
 	}
 
-	public void setKeyFormatStrategy(SjmsKeyFormatStrategy keyFormatStrategy) {
+	public void setKeyFormatStrategy(KeyFormatStrategy keyFormatStrategy) {
 		this.keyFormatStrategy = keyFormatStrategy;
 	}
 
-	public SjmsKeyFormatStrategy getKeyFormatStrategy() {
+	public KeyFormatStrategy getKeyFormatStrategy() {
 		return keyFormatStrategy;
 	}
 }
