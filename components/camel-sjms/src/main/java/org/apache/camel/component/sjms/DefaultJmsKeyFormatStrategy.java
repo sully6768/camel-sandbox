@@ -23,7 +23,7 @@ package org.apache.camel.component.sjms;
  *
  * @version 
  */
-public class DefaultJmsKeyFormatStrategy implements SjmsKeyFormatStrategy {
+public class DefaultJmsKeyFormatStrategy implements KeyFormatStrategy {
 
     public String encodeKey(String key) {
         String answer = key.replace(".", "_DOT_");
