@@ -142,6 +142,7 @@ public abstract class SjmsProducer extends DefaultAsyncProducer  {
     }
     
     public abstract MessageProducerResources doCreateProducerModel() throws Exception;
+    
     public abstract void sendMessage(Exchange exchange, final AsyncCallback callback) throws Exception;
     
     @Override

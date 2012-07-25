@@ -69,9 +69,6 @@ public class SjmsEndpoint extends DefaultEndpoint implements MultipleConsumersSu
         }  else {
             throw new RuntimeCamelException("Endpoint URI unsupported: " + uri);
         }
-        if (isTransacted()) {
-            setAcknowledgementMode(SessionAcknowledgementType.SESSION_TRANSACTED);
-        }
     }
     
     @Override
@@ -162,6 +159,9 @@ public class SjmsEndpoint extends DefaultEndpoint implements MultipleConsumersSu
     }
 
     public void setTransacted(boolean transacted) {
+    	if (transacted) {
+    		setAcknowledgementMode(SessionAcknowledgementType.SESSION_TRANSACTED);
+    	}
         this.transacted = transacted;
     }
 

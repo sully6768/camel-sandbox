@@ -63,11 +63,11 @@ public class JmsTestSupport extends CamelTestSupport {
 
     @Override
     public void tearDown() throws Exception {
-        if (getConnection() != null) {
-            getConnection().stop();
-        }
         if (getSession() != null) {
             getSession().close();
+        }
+        if (getConnection() != null) {
+            getConnection().stop();
         }
         super.tearDown();
     }
