@@ -43,5 +43,4 @@ After a successful build, add the following dependency to the `pom.xml` for this
     <!-- currently supports trunk only -->
 </dependency>
 ```
-
-
+For working examples with performance output see the https://github.com/sully6768/camel-sandbox/examples/camel-sjms-comparison-project.
