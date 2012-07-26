@@ -21,6 +21,8 @@ import javax.jms.Destination;
 import javax.jms.MessageConsumer;
 import javax.jms.MessageProducer;
 import javax.jms.Session;
+import javax.jms.Topic;
+import javax.jms.TopicSession;
 
 import org.apache.camel.util.ObjectHelper;
 
@@ -83,7 +85,6 @@ public class JmsObjectFactory {
             boolean topic, 
             String durableSubscriptionId,
             boolean noLocal) throws Exception {
-        MessageConsumer messageConsumer = null;
         Destination destination = null;
         if (topic) {
             destination = session.createTopic(destinationName);
@@ -91,11 +92,40 @@ public class JmsObjectFactory {
         } else {
             destination = session.createQueue(destinationName);
         }
+        return createMessageConsumer(session, destination, messageSelector, topic, durableSubscriptionId, noLocal);
+    }
+    
+    public static MessageConsumer createMessageConsumer(
+            Session session, 
+            Destination destination, 
+            String messageSelector, 
+            boolean topic, 
+            String durableSubscriptionId,
+            boolean noLocal) throws Exception {
+        MessageConsumer messageConsumer = null;
         
-        if (ObjectHelper.isNotEmpty(messageSelector)) {
-            messageConsumer = session.createConsumer(destination, messageSelector, noLocal); 
+        if(topic) {
+    		TopicSession ts = (TopicSession) session;
+        	if (ObjectHelper.isNotEmpty(durableSubscriptionId)) {
+                if (ObjectHelper.isNotEmpty(messageSelector)) {
+                	messageConsumer = ts.createDurableSubscriber((Topic) destination, durableSubscriptionId, messageSelector, noLocal); 
+                } else {
+                	messageConsumer = ts.createDurableSubscriber((Topic) destination, durableSubscriptionId);
+                }
+        		
+        	} else {
+                if (ObjectHelper.isNotEmpty(messageSelector)) {
+                	messageConsumer = ts.createSubscriber((Topic) destination, messageSelector, noLocal); 
+                } else {
+                	messageConsumer = ts.createSubscriber((Topic) destination);
+                }
+        	}
         } else {
-            messageConsumer = session.createConsumer(destination);
+            if (ObjectHelper.isNotEmpty(messageSelector)) {
+                messageConsumer = session.createConsumer(destination, messageSelector, noLocal); 
+            } else {
+                messageConsumer = session.createConsumer(destination);
+            }
         }
         return messageConsumer;
     }

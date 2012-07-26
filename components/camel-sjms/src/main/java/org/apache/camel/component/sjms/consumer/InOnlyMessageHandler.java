@@ -17,8 +17,8 @@
 package org.apache.camel.component.sjms.consumer;
 
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.atomic.AtomicBoolean;
 
+import org.apache.camel.AsyncCallback;
 import org.apache.camel.Endpoint;
 import org.apache.camel.Exchange;
 import org.apache.camel.spi.Synchronization;
@@ -32,25 +32,21 @@ import org.apache.camel.util.AsyncProcessorHelper;
 public class InOnlyMessageHandler extends DefaultMessageHandler {
 
     /**
-     * TODO Add Constructor Javadoc
      * 
      * @param endpoint
      * @param processor
      */
-    public InOnlyMessageHandler(Endpoint endpoint, AtomicBoolean stopped,
-            ExecutorService executor) {
-        this(endpoint, stopped, executor, null);
+    public InOnlyMessageHandler(Endpoint endpoint, ExecutorService executor) {
+        this(endpoint, executor, null);
     }
 
     /**
-     * TODO Add Constructor Javadoc
      * 
      * @param stopped
      * @param synchronization
      */
-    public InOnlyMessageHandler(Endpoint endpoint, AtomicBoolean stopped,
-            ExecutorService executor, Synchronization synchronization) {
-        super(endpoint, stopped, executor, synchronization);
+    public InOnlyMessageHandler(Endpoint endpoint, ExecutorService executor, Synchronization synchronization) {
+        super(endpoint, executor, synchronization);
     }
 
     /**
@@ -59,36 +55,53 @@ public class InOnlyMessageHandler extends DefaultMessageHandler {
     @Override
     public void doHandleMessage(final Exchange exchange) {
         if (log.isDebugEnabled()) {
-            log.debug("SjmsMessageConsumer invoked for Exchange id:{} ",
-                    exchange.getExchangeId());
+            log.debug("Handling InOnly Message: {}", exchange.getIn().getBody());
         }
-        if (isStarted()) {
-            if (exchange.isFailed()) {
-                return;
-            } else {
-                if (log.isTraceEnabled()) {
-                    log.trace("Processing Exchange id:{} synchronously",
-                            exchange.getExchangeId());
+        if (exchange.isFailed()) {
+            return;
+        } else {
+            NoOpAsyncCallback callback = new NoOpAsyncCallback();
+            if (isTransacted() || isSynchronous()) {
+                // must process synchronous if transacted or configured to
+                // do so
+                if (log.isDebugEnabled()) {
+                    log.debug("Synchronous processing: Message[{}], Destination[{}] ", exchange.getIn().getBody(), this.getEndpoint().getEndpointUri());
                 }
                 try {
                     AsyncProcessorHelper.process(getProcessor(), exchange);
                 } catch (Exception e) {
                     exchange.setException(e);
+                } finally {
+                    callback.done(true);
+                }
+            } else {
+                // process asynchronous using the async routing engine
+                if (log.isDebugEnabled()) {
+                    log.debug("Aynchronous processing: Message[{}], Destination[{}] ", exchange.getIn().getBody(), this.getEndpoint().getEndpointUri());
+                }
+                boolean sync = AsyncProcessorHelper.process(getProcessor(),
+                        exchange, callback);
+                if (!sync) {
+                    // will be done async so return now
+                    return;
                 }
             }
-        } else {
-            log.warn(
-                    "SjmsMessageConsumer invoked while stopped.  Exchange id:{} will not be processed.",
-                    exchange.getExchangeId());
-        }
-
-        if (log.isDebugEnabled()) {
-            log.debug("SjmsMessageConsumer invoked for Exchange id:{} ",
-                    exchange.getExchangeId());
         }
     }
     
     @Override
     public void close() {
+    	// no-op
+    }
+
+    protected class NoOpAsyncCallback implements AsyncCallback {
+
+        public NoOpAsyncCallback() {
+        }
+
+        @Override
+        public void done(boolean sync) {
+        	log.debug("Asynchronous InOnly Exchange complete");
+        }
     }
 }

@@ -32,7 +32,7 @@ public class InOnlyTopicConsumerTest extends JmsTestSupport {
     }
 
     @Test
-    public void testInOnlyQueueProducer() throws Exception {
+    public void testSynchronous() throws Exception {
         final String expectedBody = "Hello World!";
         MockEndpoint mock = getMockEndpoint("mock:result");
 

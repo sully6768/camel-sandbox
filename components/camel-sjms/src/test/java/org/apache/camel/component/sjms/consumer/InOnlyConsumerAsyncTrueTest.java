@@ -28,23 +28,18 @@ import org.junit.Test;
  */
 public class InOnlyConsumerAsyncTrueTest extends JmsTestSupport {
 
-
-    public static final String QUEUE_NAME = "in.only.consumer.async";
-    private static final String SJMS_QUEUE_NAME = "sjms:queue:"+QUEUE_NAME+"?synchronous=false";
+    private static final String SJMS_QUEUE_NAME = "sjms:queue:in.only.consumer.async?synchronous=false";
     private static final String MOCK_RESULT = "mock:result";
     private static String beforeThreadName;
     private static String afterThreadName;
     
     @Test
     public void testInOnlyConsumerAsyncTrue() throws Exception {
-        // Hello World is received first despite its send last
-        // the reason is that the first message is processed asynchronously
-        // and it takes 2 sec to complete, so in between we have time to
-        // process the 2nd message on the queue
         getMockEndpoint(MOCK_RESULT).expectedBodiesReceived("Hello World", "Hello Camel");
 
-        this.sendTextMessage(QUEUE_NAME, "Hello Camel");
-        this.sendTextMessage(QUEUE_NAME, "Hello World");
+        template.sendBody(SJMS_QUEUE_NAME, "Hello Camel");
+        template.sendBody(SJMS_QUEUE_NAME, "Hello World");
+        Thread.sleep(3000);
 
         assertMockEndpointsSatisfied();
         assertTrue( ! beforeThreadName.equals(afterThreadName));
@@ -56,22 +51,22 @@ public class InOnlyConsumerAsyncTrueTest extends JmsTestSupport {
             @Override
             public void configure() throws Exception {
                 from(SJMS_QUEUE_NAME)
-                .to("log:before")
-                .process(new Processor() {
-                    public void process(Exchange exchange) throws Exception {
-                        beforeThreadName = Thread.currentThread().getName();
-                        if(exchange.getIn().getBody(String.class).equals("Hello Camel")) {
-                        	Thread.sleep(2000);
-                        }
-                    }
-                })
-                .process(new Processor() {
-                    public void process(Exchange exchange) throws Exception {
-                        afterThreadName = Thread.currentThread().getName();
-                    }
-                })
-                .to("log:after")
-                .to(MOCK_RESULT);
+	                .to("log:before")
+	                .process(new Processor() {
+	                    public void process(Exchange exchange) throws Exception {
+	                        beforeThreadName = Thread.currentThread().getName();
+	                        if(exchange.getIn().getBody(String.class).equals("Hello Camel")) {
+	                        	Thread.sleep(2000);
+	                        }
+	                    }
+	                })
+	                .process(new Processor() {
+	                    public void process(Exchange exchange) throws Exception {
+	                        afterThreadName = Thread.currentThread().getName();
+	                    }
+	                })
+	                .to("log:after")
+	                .to(MOCK_RESULT);
             }
         };
     }

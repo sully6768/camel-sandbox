@@ -28,23 +28,23 @@ import org.junit.Test;
  */
 public class InOnlyConsumerAsyncFalseTest extends JmsTestSupport {
 
-
-    public static final String QUEUE_NAME = "in.only.consumer.async";
-    private static final String SJMS_QUEUE_NAME = "sjms:queue:"+QUEUE_NAME+"?synchronous=true";
+    private static final String SJMS_QUEUE_NAME = "sjms:queue:in.only.consumer.synch";
     private static final String MOCK_RESULT = "mock:result";
     private static String beforeThreadName;
     private static String afterThreadName;
     
     @Test
-    public void testInOnlyConsumerAsyncFalse() throws Exception {
+    public void testInOnlyConsumerAsyncTrue() throws Exception {
+        getMockEndpoint(MOCK_RESULT).expectedBodiesReceived("Hello Camel", "Hello World");
+
+        template.sendBody(SJMS_QUEUE_NAME, "Hello Camel");
+        template.sendBody(SJMS_QUEUE_NAME, "Hello World");
+
         // Hello World is received first despite its send last
         // the reason is that the first message is processed asynchronously
         // and it takes 2 sec to complete, so in between we have time to
         // process the 2nd message on the queue
-        getMockEndpoint(MOCK_RESULT).expectedBodiesReceived("Hello Camel", "Hello World");
-
-        this.sendTextMessage(QUEUE_NAME, "Hello Camel");
-        this.sendTextMessage(QUEUE_NAME, "Hello World");
+        Thread.sleep(3000);
 
         assertMockEndpointsSatisfied();
         assertTrue(beforeThreadName.equals(afterThreadName));

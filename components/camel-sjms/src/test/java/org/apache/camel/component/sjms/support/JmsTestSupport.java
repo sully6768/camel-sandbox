@@ -17,17 +17,15 @@
 package org.apache.camel.component.sjms.support;
 
 import javax.jms.Connection;
-import javax.jms.Destination;
-import javax.jms.JMSException;
-import javax.jms.MessageProducer;
 import javax.jms.Session;
-import javax.jms.TextMessage;
 
 import org.apache.activemq.ActiveMQConnectionFactory;
+import org.apache.activemq.broker.BrokerService;
 import org.apache.camel.CamelContext;
 import org.apache.camel.Produce;
 import org.apache.camel.ProducerTemplate;
 import org.apache.camel.component.sjms.SjmsComponent;
+import org.apache.camel.impl.DefaultCamelContext;
 import org.apache.camel.test.junit4.CamelTestSupport;
 
 /**
@@ -36,14 +34,10 @@ import org.apache.camel.test.junit4.CamelTestSupport;
  * @author sully6768
  */
 public class JmsTestSupport extends CamelTestSupport {
-	
-	static{
-		System.setProperty("org.apache.activemq.default.directory.prefix", "target/activemq/");
-	}
-	
+	private static final String BROKER_URI = "tcp://localhost:33333";
     @Produce
     protected ProducerTemplate template;
-    protected ActiveMQConnectionFactory connectionFactory = new ActiveMQConnectionFactory("vm://broker?broker.useJmx=false");
+    private BrokerService broker;
     private Connection connection;
     private Session session;
 
@@ -54,22 +48,36 @@ public class JmsTestSupport extends CamelTestSupport {
 
     @Override
     public void setUp() throws Exception {
+        broker = new BrokerService();
+        broker.setUseJmx(true);
+        broker.setPersistent(false);
+        broker.addConnector(BROKER_URI);
+        broker.start();
         super.setUp();
-        
-        setConnection(connectionFactory.createConnection());
-        getConnection().start();
-        setSession(getConnection().createSession(false, Session.AUTO_ACKNOWLEDGE));
     }
 
     @Override
     public void tearDown() throws Exception {
+        super.tearDown();
+        DefaultCamelContext dcc = (DefaultCamelContext) context;
+        while (!dcc.isStopped()) {
+        	log.info("Waiting on the Camel Context to stop");
+        }
+    	log.info("Closing JMS Session");
         if (getSession() != null) {
             getSession().close();
+            setSession(null);
         }
-        if (getConnection() != null) {
-            getConnection().stop();
+    	log.info("Closing JMS Connection");
+        if (connection != null) {
+        	connection.stop();
+        	connection = null;
         }
-        super.tearDown();
+    	log.info("Stopping the ActiveMQ Broker");
+        if (broker != null) {
+        	broker.stop();
+        	broker = null;
+        }
     }
     
     /*
@@ -81,21 +89,16 @@ public class JmsTestSupport extends CamelTestSupport {
     @Override
     protected CamelContext createCamelContext() throws Exception {
         CamelContext camelContext = super.createCamelContext();
+        ActiveMQConnectionFactory connectionFactory = new ActiveMQConnectionFactory(BROKER_URI);
+        connection = connectionFactory.createConnection();
+        connection.start();
+        session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
         SjmsComponent component = new SjmsComponent();
         component.setMaxConnections(1);
         component.setConnectionFactory(connectionFactory);
         camelContext.addComponent("sjms", component);
         return camelContext;
     }
-
-	protected void sendTextMessage(final String queueName, final String expectedBody) throws JMSException {
-		Session session = this.getSession();
-	    Destination queue = session.createQueue(queueName);
-	    MessageProducer producer = session.createProducer(queue);
-	    TextMessage txtMessage = session.createTextMessage();
-	    txtMessage.setText(expectedBody);
-	    producer.send(txtMessage);
-	}
     
     public void setSession(Session session) {
         this.session = session;
@@ -103,14 +106,6 @@ public class JmsTestSupport extends CamelTestSupport {
 
     public Session getSession() {
         return session;
-    }
-
-    public void setConnection(Connection connection) {
-        this.connection = connection;
-    }
-
-    public Connection getConnection() {
-        return connection;
     }
 
 }

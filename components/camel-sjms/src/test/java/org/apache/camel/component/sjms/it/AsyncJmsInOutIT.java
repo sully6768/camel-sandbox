@@ -31,7 +31,7 @@ import org.junit.Test;
 public class AsyncJmsInOutIT extends JmsTestSupport {
 
     @Test
-    public void testAsyncJmsInOut() throws Exception {
+    public void testAsynchronous() throws Exception {
         MockEndpoint mock = getMockEndpoint("mock:result");
         mock.expectedMessageCount(100);
         mock.expectsNoDuplicates(body());
@@ -63,10 +63,10 @@ public class AsyncJmsInOutIT extends JmsTestSupport {
                 from("seda:start")
                     // we can only send at fastest the 100 msg in 5 sec due the delay
                     .delay(50)
-                    .inOut("sjms:queue:bar?synchronous=false")
+                    .to("sjms:queue:bar?synchronous=false&exchangePattern=InOut")
                     .to("mock:result");
 
-                from("sjms:queue:bar?synchronous=false")
+                from("sjms:queue:bar?synchronous=false&exchangePattern=InOut")
                     .log("Using ${threadName} to process ${body}")
                     // we can only process at fastest the 100 msg in 5 sec due the delay
                     .delay(50)

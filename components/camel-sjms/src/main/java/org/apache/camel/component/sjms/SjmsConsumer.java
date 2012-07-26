@@ -40,7 +40,7 @@ public class SjmsConsumer extends DefaultConsumer {
         return (SjmsEndpoint)this.getEndpoint();
     }
     
-    protected ConnectionResource getConnectionPool() {
+    protected ConnectionResource getConnectionResource() {
         return getSjmsEndpoint().getConnectionResource();
     }
     

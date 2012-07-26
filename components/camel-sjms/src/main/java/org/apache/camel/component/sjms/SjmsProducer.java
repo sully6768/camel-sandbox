@@ -153,7 +153,7 @@ public abstract class SjmsProducer extends DefaultAsyncProducer  {
         try {
             if( ! isSynchronous()) {
                 if(log.isDebugEnabled()) {
-                    log.debug("  Sending message asynchronously for Exchange id:{}", exchange.getExchangeId());
+                    log.debug("  Sending message asynchronously: {}", exchange.getIn().getBody());
                 }
                 getExecutor().execute(new Runnable() {
                     @Override
@@ -167,7 +167,7 @@ public abstract class SjmsProducer extends DefaultAsyncProducer  {
                 });
             } else {
                 if(log.isDebugEnabled()) {
-                    log.debug("  Sending message synchronously for Exchange id:{}", exchange.getExchangeId());
+                    log.debug("  Sending message synchronously: {}", exchange.getIn().getBody());
                 }
                 sendMessage(exchange, callback);
             }
@@ -190,50 +190,50 @@ public abstract class SjmsProducer extends DefaultAsyncProducer  {
         return (SjmsEndpoint)this.getEndpoint();
     }
     
-    protected ConnectionResource getConnectionPool() {
+    protected ConnectionResource getConnectionResource() {
         return getSjmsEndpoint().getConnectionResource();
     }
     
     /**
      * Gets the acknowledgment mode for this instance of DestinationProducer.
      *
-     * @return the acknowledgment mode
+     * @return int
      */
     public int getAcknowledgeMode() {
         return getSjmsEndpoint().getAcknowledgementMode().intValue();
     }
 
     /**
-     * Gets the boolean value of async for this instance of DestinationProducer.
+     * Gets the synchronous value for this instance of DestinationProducer.
      *
-     * @return true if asynchronous, otherwise it is synchronous 
+     * @return true if synchronous, otherwise false 
      */
     public boolean isSynchronous() {
         return getSjmsEndpoint().isSynchronous();
     }
 
     /**
-     * Gets the String value of replyTo for this instance of DestinationProducer.
+     * Gets the replyTo for this instance of DestinationProducer.
      *
-     * @return the replyTo
+     * @return String
      */
     public String getReplyTo() {
         return getSjmsEndpoint().getNamedReplyTo();
     }
 
     /**
-     * Gets the String value of destinationName for this instance of DestinationProducer.
+     * Gets the destinationName for this instance of DestinationProducer.
      *
-     * @return the destinationName
+     * @return String
      */
     public String getDestinationName() {
         return getSjmsEndpoint().getDestinationName();
     }
 
     /**
-     * Sets the MessageProducerPool value of producers for this instance of SjmsProducer.
+     * Sets the producer pool for this instance of SjmsProducer.
      *
-     * @param producers Sets MessageProducerPool, default is TODO add default
+     * @param producers A MessageProducerPool
      */
     public void setProducers(MessageProducerPool producers) {
         this.producers = producers;
@@ -260,7 +260,7 @@ public abstract class SjmsProducer extends DefaultAsyncProducer  {
     /**
      * Test to determine if this endpoint should use a JMS Transaction.
      * 
-     * @return true if it is a Topic, otherwise it is a Queue
+     * @return true if transacted, otherwise false
      */
     public boolean isEndpointTransacted() {
         return getSjmsEndpoint().isTransacted();
@@ -276,36 +276,36 @@ public abstract class SjmsProducer extends DefaultAsyncProducer  {
     }
 
     /**
-     * Gets the int value of producerCount for this instance of SjmsProducer.
+     * Gets the producerCount for this instance of SjmsProducer.
      *
-     * @return the producerCount
+     * @return int
      */
     public int getProducerCount() {
         return getSjmsEndpoint().getProducerCount();
     }
 
     /**
-     * Gets the int value of consumerCount for this instance of SjmsProducer.
+     * Gets consumerCount for this instance of SjmsProducer.
      *
-     * @return the consumerCount
+     * @return int
      */
     public int getConsumerCount() {
         return getSjmsEndpoint().getConsumerCount();
     }
 
     /**
-     * Gets the ExecutorService value of executor for this instance of SjmsProducer.
+     * Gets the executor for this instance of SjmsProducer.
      *
-     * @return the executor
+     * @return ExecutorService
      */
     public ExecutorService getExecutor() {
         return executor;
     }
 
     /**
-     * Gets the long value of ttl for this instance of SjmsProducer.
+     * Gets the ttl for this instance of SjmsProducer.
      *
-     * @return the ttl
+     * @return long
      */
     public long getTtl() {
         return  getSjmsEndpoint().getTtl();
@@ -314,10 +314,20 @@ public abstract class SjmsProducer extends DefaultAsyncProducer  {
     /**
      * Gets the boolean value of persistent for this instance of SjmsProducer.
      *
-     * @return the persistent
+     * @return true if persistent, otherwise false
      */
     public boolean isPersistent() {
         return  getSjmsEndpoint().isPersistent();
     }
+
+
+    /**
+     * Gets responseTimeOut for this instance of SjmsProducer.
+     *
+     * @return long
+     */
+	public long getResponseTimeOut() {
+		return  getSjmsEndpoint().getResponseTimeOut();
+	}
 
 }

@@ -54,6 +54,7 @@ public class SjmsEndpoint extends DefaultEndpoint implements MultipleConsumersSu
     private long ttl = -1;
     private boolean persistent = true;
     private String durableSubscription;
+    private long responseTimeOut = 5000;
     
 
     public SjmsEndpoint() {
@@ -241,4 +242,12 @@ public class SjmsEndpoint extends DefaultEndpoint implements MultipleConsumersSu
     public void setSessionCount(int sessionCount) {
         this.sessionCount = sessionCount;
     }
+
+	public void setResponseTimeOut(long responseTimeOut) {
+		this.responseTimeOut = responseTimeOut;
+	}
+
+	public long getResponseTimeOut() {
+		return responseTimeOut;
+	}
 }

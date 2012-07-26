@@ -18,11 +18,8 @@ package org.apache.camel.component.sjms.it;
 
 import java.util.concurrent.TimeUnit;
 
-import org.apache.activemq.ActiveMQConnectionFactory;
-import org.apache.camel.CamelContext;
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.component.mock.MockEndpoint;
-import org.apache.camel.component.sjms.SjmsComponent;
 import org.apache.camel.component.sjms.support.JmsTestSupport;
 import org.apache.camel.util.StopWatch;
 
@@ -34,7 +31,7 @@ import org.junit.Test;
 public class SyncJmsInOutIT extends JmsTestSupport {
 
     @Test
-    public void testAsyncJmsInOut() throws Exception {
+    public void testSynchronous() throws Exception {
         MockEndpoint mock = getMockEndpoint("mock:result");
         mock.expectedMessageCount(100);
         mock.expectsNoDuplicates(body());
@@ -66,10 +63,10 @@ public class SyncJmsInOutIT extends JmsTestSupport {
                 from("seda:start")
                     // we can only send at fastest the 100 msg in 5 sec due the delay
                     .delay(50)
-                    .inOut("sjms:queue:bar")
+                    .to("sjms:queue:bar?exchangePattern=InOut")
                     .to("mock:result");
 
-                from("sjms:queue:bar")
+                from("sjms:queue:bar?exchangePattern=InOut")
                     .log("Using ${threadName} to process ${body}")
                     // we can only process at fastest the 100 msg in 5 sec due the delay
                     .delay(50)

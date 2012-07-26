@@ -16,9 +16,9 @@
  */
 package org.apache.camel.component.sjms.consumer;
 
-
+import org.apache.camel.Exchange;
+import org.apache.camel.Processor;
 import org.apache.camel.builder.RouteBuilder;
-import org.apache.camel.component.mock.MockEndpoint;
 import org.apache.camel.component.sjms.support.JmsTestSupport;
 
 import org.junit.Test;
@@ -26,29 +26,36 @@ import org.junit.Test;
 /**
  * @version 
  */
-public class InOnlyConsumerQueueEndpointTest extends JmsTestSupport {
-
-    public static final String QUEUE_NAME = "in.only.consumer.default";
-    private static final String SJMS_QUEUE_NAME = "sjms:queue:" + QUEUE_NAME;
-    private static final String MOCK_RESULT = "mock:result";
+public class InOutConsumerTempQueueAsyncTest extends JmsTestSupport {
 
     @Test
-    public void testSynchronous() throws Exception {
-        final String expectedBody = "Hello World";
-        MockEndpoint mock = getMockEndpoint(MOCK_RESULT);
-        mock.expectedMessageCount(1);
-        mock.expectedBodiesReceived(expectedBody);
-        
-    	sendTextMessage(QUEUE_NAME,expectedBody);
-        
-        mock.assertIsSatisfied();
+    public void testAynchronous() throws Exception {
+        getMockEndpoint("mock:result").expectedBodiesReceived("Hello World", "Hello Camel");
+
+        template.sendBody("sjms:start", "Hello Camel");
+        template.sendBody("sjms:start", "Hello World");
+        Thread.sleep(5000);
+        assertMockEndpointsSatisfied();
     }
 
     protected RouteBuilder createRouteBuilder() throws Exception {
         return new RouteBuilder() {
             public void configure() throws Exception {
-                from(SJMS_QUEUE_NAME)
-                	.to(MOCK_RESULT);
+            	from("sjms:queue:start?synchronous=false")
+            		.to("sjms:queue:in.out.temp.queue?exchangePattern=InOut&synchronous=false")
+            		.to("mock:result");
+            	
+                from("sjms:queue:in.out.temp.queue?exchangePattern=InOut&synchronous=false")
+	                .to("log:before")
+	                .process(new Processor() {
+	                    public void process(Exchange exchange) throws Exception {
+	                    	String body = (String) exchange.getIn().getBody();
+	                        if (body.contains("Camel")) {
+	                        	Thread.sleep(2000);
+	                        }
+	                    }
+	                }
+	            );
             }
         };
     }

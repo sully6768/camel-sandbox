@@ -45,7 +45,6 @@ import org.apache.camel.Exchange;
 import org.apache.camel.RuntimeCamelException;
 import org.apache.camel.component.sjms.IllegalHeaderException;
 import org.apache.camel.impl.DefaultMessage;
-import org.apache.camel.spi.Synchronization;
 import org.apache.camel.util.ExchangeHelper;
 import org.apache.camel.util.ObjectHelper;
 
@@ -70,20 +69,7 @@ public final class JmsMessageHelper {
     }
     
     @SuppressWarnings("unchecked")
-    public static Exchange populateExchange(Message message, Exchange exchange,
-            boolean out) {
-        exchange.addOnCompletion(new Synchronization() {
-
-            @Override
-            public void onFailure(Exchange exchange) {
-                LOGGER.info("ONFAILURE: {}", exchange.toString());
-            }
-
-            @Override
-            public void onComplete(Exchange exchange) {
-                LOGGER.info("ONCOMPLETION: {}", exchange.toString());
-            }
-        });
+    public static Exchange populateExchange(Message message, Exchange exchange, boolean out) {
         try {
             JmsMessageHelper.setJmsMessageHeaders(message, exchange, out);
             if (message != null) {
@@ -527,42 +513,47 @@ public final class JmsMessageHelper {
     public static Message createMessage(Exchange exchange, Session session, boolean out) throws Exception {
         Message answer = null;
         Object body = null;
-        if (out) {
-            body = exchange.getOut().getBody();
-        } else {
-            body = exchange.getIn().getBody();
-        }
-        JmsMessageType messageType = JmsMessageHelper.discoverType(exchange);
+        try {
+			if (out && exchange.getOut().getBody() != null) {
+			    body = exchange.getOut().getBody();
+			} else {
+			    body = exchange.getIn().getBody();
+			}
+			JmsMessageType messageType = JmsMessageHelper.discoverType(exchange);
 
-        switch (messageType) {
-        case Bytes:
-            BytesMessage bytesMessage = session.createBytesMessage();
-            bytesMessage.writeBytes((byte[]) body);
-            answer = bytesMessage;
-            break;
-        case Map:
-            MapMessage mapMessage = session.createMapMessage();
-            Map<String, Object> objMap = (Map<String, Object>) body;
-            Set<String> keys = objMap.keySet();
-            for (String key : keys) {
-                Object value = objMap.get(key);
-                mapMessage.setObject(key, value);
-            }
-            answer = mapMessage;
-            break;
-        case Object:
-            ObjectMessage objectMessage = session.createObjectMessage();
-            objectMessage.setObject((Serializable) body);
-            answer = objectMessage;
-            break;
-        case Text:
-            TextMessage textMessage = session.createTextMessage();
-            textMessage.setText((String) body);
-            answer = textMessage;
-            break;
-        default:
-            break;
-        }
+			switch (messageType) {
+			case Bytes:
+			    BytesMessage bytesMessage = session.createBytesMessage();
+			    bytesMessage.writeBytes((byte[]) body);
+			    answer = bytesMessage;
+			    break;
+			case Map:
+			    MapMessage mapMessage = session.createMapMessage();
+			    Map<String, Object> objMap = (Map<String, Object>) body;
+			    Set<String> keys = objMap.keySet();
+			    for (String key : keys) {
+			        Object value = objMap.get(key);
+			        mapMessage.setObject(key, value);
+			    }
+			    answer = mapMessage;
+			    break;
+			case Object:
+			    ObjectMessage objectMessage = session.createObjectMessage();
+			    objectMessage.setObject((Serializable) body);
+			    answer = objectMessage;
+			    break;
+			case Text:
+			    TextMessage textMessage = session.createTextMessage();
+			    textMessage.setText((String) body);
+			    answer = textMessage;
+			    break;
+			default:
+			    break;
+			}
+		} catch (Exception e) {
+			LOGGER.error("TODO Auto-generated catch block", e);
+			throw e;
+		}
         
         answer = JmsMessageHelper.setJmsMessageHeaders(exchange, answer);
         return answer;

@@ -19,7 +19,6 @@ package org.apache.camel.component.sjms.consumer;
 import static org.apache.camel.util.ObjectHelper.wrapRuntimeCamelException;
 
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.jms.Destination;
 import javax.jms.Message;
@@ -48,7 +47,6 @@ public abstract class DefaultMessageHandler implements MessageListener {
 
     protected final Logger log = LoggerFactory.getLogger(getClass());
     
-    private final AtomicBoolean stopped;
     private final ExecutorService executor;
     
     private Endpoint endpoint;
@@ -61,27 +59,12 @@ public abstract class DefaultMessageHandler implements MessageListener {
     private Synchronization synchronization;
     private boolean topic = false;
 
-    /**
-     * TODO Add Constructor Javadoc
-     * 
-     * @param endpoint
-     * @param processor
-     */
-    public DefaultMessageHandler(Endpoint endpoint, AtomicBoolean stopped,
-            ExecutorService executor) {
-        this(endpoint, stopped, executor, null);
+    public DefaultMessageHandler(Endpoint endpoint, ExecutorService executor) {
+        this(endpoint, executor, null);
     }
 
-    /**
-     * TODO Add Constructor Javadoc
-     * 
-     * @param endpoint
-     * @param processor
-     */
-    public DefaultMessageHandler(Endpoint endpoint, AtomicBoolean stopped,
-            ExecutorService executor, Synchronization synchronization) {
+    public DefaultMessageHandler(Endpoint endpoint, ExecutorService executor, Synchronization synchronization) {
         super();
-        this.stopped = stopped;
         this.synchronization = synchronization;
         this.endpoint = endpoint;
         this.executor = executor;
@@ -110,15 +93,13 @@ public abstract class DefaultMessageHandler implements MessageListener {
                 if (isTransacted() || isSynchronous()) {
                     if (log.isDebugEnabled()) {
                         log.debug(
-                                "  Sending message synchronously for Exchange id:{}",
-                                exchange.getExchangeId());
+                        		"  Sending message asynchronously: {}", exchange.getIn().getBody());
                     }
                     doHandleMessage(exchange);
                 } else {
                     if (log.isDebugEnabled()) {
                         log.debug(
-                                "  Sending message asynchronously for Exchange id:{}",
-                                exchange.getExchangeId());
+                                "  Sending message asynchronously: {}", exchange.getIn().getBody());
                     }
                     executor.execute(new Runnable() {
                         @Override
@@ -199,14 +180,6 @@ public abstract class DefaultMessageHandler implements MessageListener {
         return synchronous;
     }
 
-    public boolean isStopped() {
-        return stopped.get();
-    }
-
-    public boolean isStarted() {
-        return !isStopped();
-    }
-
     public void setNamedReplyTo(Destination namedReplyToDestination) {
         this.namedReplyTo = namedReplyToDestination;
     }
@@ -215,20 +188,10 @@ public abstract class DefaultMessageHandler implements MessageListener {
         return namedReplyTo;
     }
 
-	/**
-	 * Sets the boolean value of topic for this instance of DefaultMessageHandler.
-	 *
-	 * @param topic Sets boolean, default is TODO add default
-	 */
 	public void setTopic(boolean topic) {
 		this.topic = topic;
 	}
 
-	/**
-	 * Gets the boolean value of topic for this instance of DefaultMessageHandler.
-	 *
-	 * @return the topic
-	 */
 	public boolean isTopic() {
 		return topic;
 	}

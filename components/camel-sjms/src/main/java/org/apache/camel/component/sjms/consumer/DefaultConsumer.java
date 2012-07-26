@@ -17,7 +17,6 @@
 package org.apache.camel.component.sjms.consumer;
 
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.jms.Connection;
 import javax.jms.MessageConsumer;
@@ -39,8 +38,6 @@ import org.apache.camel.component.sjms.tx.SessionTransactionSynchronization;
 public class DefaultConsumer extends SjmsConsumer {
     
     protected MessageConsumerPool consumers;
-
-    private AtomicBoolean stopped = new AtomicBoolean(false);
     private final ExecutorService executor;
 
     protected class MessageConsumerPool extends
@@ -163,18 +160,18 @@ public class DefaultConsumer extends SjmsConsumer {
     @Override
     protected void doResume() throws Exception {
         super.doResume();
-        getStopped().set(false);
+        doStart();
     }
 
     @Override
     protected void doSuspend() throws Exception {
-        getStopped().set(true);
+    	doStop();
         super.doSuspend();
     }
 
     private MessageConsumerResources createConsumerWithDedicatedSession()
             throws Exception {
-        Connection conn = getConnectionPool().borrowConnection();
+        Connection conn = getConnectionResource().borrowConnection();
         Session session = null;
         if (isEndpointTransacted()) {
             session = conn.createSession(true, Session.SESSION_TRANSACTED);
@@ -191,7 +188,7 @@ public class DefaultConsumer extends SjmsConsumer {
         }
         MessageListener handler = createMessageHandler(session);
         messageConsumer.setMessageListener(handler);
-        getConnectionPool().returnConnection(conn);
+        getConnectionResource().returnConnection(conn);
         return new MessageConsumerResources(session, messageConsumer);
     }
 
@@ -225,20 +222,18 @@ public class DefaultConsumer extends SjmsConsumer {
                 ExchangePattern.InOnly)) {
             if (isEndpointTransacted()) {
                 messageHandler = new InOnlyMessageHandler(getEndpoint(),
-                        getStopped(), executor,
+                        executor,
                         new SessionTransactionSynchronization(session));
             } else {
-                messageHandler = new InOnlyMessageHandler(getEndpoint(),
-                        getStopped(), executor);
+                messageHandler = new InOnlyMessageHandler(getEndpoint(), executor);
             }
         } else {
             if (isEndpointTransacted()) {
                 messageHandler = new InOutMessageHandler(getEndpoint(),
-                        getStopped(), executor,
+                        executor,
                         new SessionTransactionSynchronization(session));
             } else {
-                messageHandler = new InOutMessageHandler(getEndpoint(),
-                        getStopped(), executor);
+                messageHandler = new InOutMessageHandler(getEndpoint(), executor);
             }
         }
         messageHandler.setSession(session);
@@ -247,26 +242,5 @@ public class DefaultConsumer extends SjmsConsumer {
         messageHandler.setTransacted(isEndpointTransacted());
         messageHandler.setTopic(isTopic());
         return messageHandler;
-    }
-
-    /**
-     * Sets the AtomicBoolean value of stopped for this instance of
-     * DefaultConsumer.
-     * 
-     * @param stopped
-     *            Sets AtomicBoolean, default is TODO add default
-     */
-    protected void setStopped(boolean flag) {
-        this.stopped.set(flag);
-    }
-
-    /**
-     * Gets the AtomicBoolean value of stopped for this instance of
-     * DefaultConsumer.
-     * 
-     * @return the stopped
-     */
-    protected AtomicBoolean getStopped() {
-        return stopped;
     }
 }

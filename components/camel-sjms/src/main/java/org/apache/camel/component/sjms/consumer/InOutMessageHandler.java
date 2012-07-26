@@ -19,7 +19,6 @@ package org.apache.camel.component.sjms.consumer;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 import javax.jms.Destination;
 import javax.jms.JMSException;
@@ -54,9 +53,8 @@ public class InOutMessageHandler extends DefaultMessageHandler {
      * @param endpoint
      * @param processor
      */
-    public InOutMessageHandler(Endpoint endpoint, AtomicBoolean stopped,
-            ExecutorService executor) {
-        this(endpoint, stopped, executor, null);
+    public InOutMessageHandler(Endpoint endpoint, ExecutorService executor) {
+        this(endpoint, executor, null);
     }
 
     /**
@@ -65,9 +63,8 @@ public class InOutMessageHandler extends DefaultMessageHandler {
      * @param stopped
      * @param synchronization
      */
-    public InOutMessageHandler(Endpoint endpoint, AtomicBoolean stopped,
-            ExecutorService executor, Synchronization synchronization) {
-        super(endpoint, stopped, executor, synchronization);
+    public InOutMessageHandler(Endpoint endpoint, ExecutorService executor, Synchronization synchronization) {
+        super(endpoint, executor, synchronization);
     }
     
     /**
@@ -75,82 +72,67 @@ public class InOutMessageHandler extends DefaultMessageHandler {
      */
     @Override
     public void doHandleMessage(final Exchange exchange) {
-        if (log.isDebugEnabled()) {
-            log.debug("SjmsMessageConsumer invoked for Exchange id:{} ",
-                    exchange.getExchangeId());
-        }
         try {
             MessageProducer messageProducer = null;
-        	if (isStarted()) {
-            	if (messageProducer == null) {
-            		Object obj = exchange.getIn().getHeader("JMSReplyTo");
-                    if (obj != null){
-    					Destination replyTo = null;
-    					if (isDestination(obj)) {
-    						replyTo = (Destination) obj;
-    					} else if (obj instanceof String) {
-    						replyTo = JmsObjectFactory.createDestination(getSession(), (String) obj, isTopic());
-    					} else {
-    						throw new Exception(
-    								"The value of JMSReplyTo must be a valid Destination or String.  Value provided: "
-    										+ obj);
-    					}
-    					if (isTemporaryDestination(replyTo)) {
-    						messageProducer = getSession().createProducer(replyTo);
-    					} else {
-    						String destinationName = getDestinationName(replyTo);
-    						if (producerCache.containsKey(destinationName)) {
-    							messageProducer = producerCache.get(destinationName);
-    						} else {
-    							messageProducer = getSession()
-    									.createProducer(replyTo);
-    							producerCache.put(destinationName, messageProducer);
-    						}
-    					}
-                    }	
-            	}
-            	
-                
-                MessageHanderAsyncCallback callback = new MessageHanderAsyncCallback(
-                        exchange, messageProducer);
-                if (exchange.isFailed()) {
-                    return;
+    		Object obj = exchange.getIn().getHeader("JMSReplyTo");
+            if (obj != null){
+				Destination replyTo = null;
+				if (isDestination(obj)) {
+					replyTo = (Destination) obj;
+				} else if (obj instanceof String) {
+					replyTo = JmsObjectFactory.createDestination(getSession(), (String) obj, isTopic());
+				} else {
+					throw new Exception(
+							"The value of JMSReplyTo must be a valid Destination or String.  Value provided: " + obj);
+				}
+				if (isTemporaryDestination(replyTo)) {
+					messageProducer = getSession().createProducer(replyTo);
+				} else {
+					String destinationName = getDestinationName(replyTo);
+					if (producerCache.containsKey(destinationName)) {
+						messageProducer = producerCache.get(destinationName);
+					} else {
+						messageProducer = getSession()
+								.createProducer(replyTo);
+						producerCache.put(destinationName, messageProducer);
+					}
+				}
+            }
+        	
+            
+            MessageHanderAsyncCallback callback = new MessageHanderAsyncCallback(
+                    exchange, messageProducer);
+            if (exchange.isFailed()) {
+                return;
+            } else {
+                if (isTransacted() || isSynchronous()) {
+                    // must process synchronous if transacted or configured to
+                    // do so
+                    if (log.isDebugEnabled()) {
+                        log.debug("Synchronous processing: Message[{}], Destination[{}] ", exchange.getIn().getBody(), this.getEndpoint().getEndpointUri());
+                    }
+                    try {
+                        AsyncProcessorHelper.process(getProcessor(), exchange);
+                    } catch (Exception e) {
+                        exchange.setException(e);
+                    } finally {
+                        callback.done(true);
+                    }
                 } else {
-                    if (isTransacted() || isSynchronous()) {
-                        // must process synchronous if transacted or configured to
-                        // do so
-                        if (log.isTraceEnabled()) {
-                            log.trace("Processing Exchange id:{} synchronously",
-                                    exchange.getExchangeId());
-                        }
-                        try {
-                            AsyncProcessorHelper.process(getProcessor(), exchange);
-                        } catch (Exception e) {
-                            exchange.setException(e);
-                        } finally {
-                            callback.done(true);
-                        }
-                    } else {
-                        // process asynchronous using the async routing engine
-                        if (log.isTraceEnabled()) {
-                            log.trace("Processing Exchange id:{} asynchronously",
-                                    exchange.getExchangeId());
-                        }
-                        boolean sync = AsyncProcessorHelper.process(getProcessor(),
-                                exchange, callback);
-                        if (!sync) {
-                            // will be done async so return now
-                            return;
-                        }
+                    // process asynchronous using the async routing engine
+                    if (log.isDebugEnabled()) {
+                        log.debug("Aynchronous processing: Message[{}], Destination[{}] ", exchange.getIn().getBody(), this.getEndpoint().getEndpointUri());
+                    }
+                    boolean sync = AsyncProcessorHelper.process(getProcessor(),
+                            exchange, callback);
+                    if (!sync) {
+                        // will be done async so return now
+                        return;
                     }
                 }
-            } else {
-                log.warn(
-                        "SjmsMessageConsumer invoked while stopped.  Exchange id:{} will not be processed.",
-                        exchange.getExchangeId());
             }
         } catch(Exception e) {
-        	
+        	exchange.setException(e);
         }
 
         if (log.isDebugEnabled()) {
@@ -170,16 +152,6 @@ public class InOutMessageHandler extends DefaultMessageHandler {
 			}
 		}
     	producerCache.clear();
-    	
-//    	if (messageProducer != null) {
-//    		try {
-//				messageProducer.close();
-//			} catch (JMSException e) {
-//				ObjectHelper.wrapRuntimeCamelException(e);
-//			} finally {
-//				messageProducer = null;
-//			}
-//    	}
     }
     
     private boolean isDestination(Object object) {
@@ -206,12 +178,6 @@ public class InOutMessageHandler extends DefaultMessageHandler {
         private Exchange exchange;
         private MessageProducer localProducer;
 
-        /**
-         * TODO Add Constructor Javadoc
-         * 
-         * @param xid
-         * @param exchange
-         */
         public MessageHanderAsyncCallback(Exchange exchange, MessageProducer localProducer) {
             super();
             this.exchange = exchange;
