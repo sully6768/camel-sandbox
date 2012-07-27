@@ -28,21 +28,17 @@ import org.junit.Test;
  */
 public class InOnlyConsumerAsyncTrueTest extends JmsTestSupport {
 
-    private static final String SJMS_QUEUE_NAME = "sjms:queue:in.only.consumer.async?synchronous=false";
     private static final String MOCK_RESULT = "mock:result";
-    private static String beforeThreadName;
-    private static String afterThreadName;
     
     @Test
     public void testInOnlyConsumerAsyncTrue() throws Exception {
         getMockEndpoint(MOCK_RESULT).expectedBodiesReceived("Hello World", "Hello Camel");
 
-        template.sendBody(SJMS_QUEUE_NAME, "Hello Camel");
-        template.sendBody(SJMS_QUEUE_NAME, "Hello World");
-        Thread.sleep(3000);
+        template.sendBody("sjms:queue:in.only.consumer.async", "Hello Camel");
+        template.sendBody("sjms:queue:in.only.consumer.async", "Hello World");
+//        Thread.sleep(4000);
 
         assertMockEndpointsSatisfied();
-        assertTrue( ! beforeThreadName.equals(afterThreadName));
     }
 
     @Override
@@ -50,19 +46,13 @@ public class InOnlyConsumerAsyncTrueTest extends JmsTestSupport {
         return new RouteBuilder() {
             @Override
             public void configure() throws Exception {
-                from(SJMS_QUEUE_NAME)
+                from("sjms:queue:in.only.consumer.async?synchronous=false")
 	                .to("log:before")
 	                .process(new Processor() {
 	                    public void process(Exchange exchange) throws Exception {
-	                        beforeThreadName = Thread.currentThread().getName();
 	                        if(exchange.getIn().getBody(String.class).equals("Hello Camel")) {
 	                        	Thread.sleep(2000);
 	                        }
-	                    }
-	                })
-	                .process(new Processor() {
-	                    public void process(Exchange exchange) throws Exception {
-	                        afterThreadName = Thread.currentThread().getName();
 	                    }
 	                })
 	                .to("log:after")

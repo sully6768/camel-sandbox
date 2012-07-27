@@ -16,11 +16,14 @@
  */
 package org.apache.camel.component.sjms.producer;
 
+import java.util.Map;
+import java.util.TreeMap;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Exchanger;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import javax.jms.Connection;
 import javax.jms.Destination;
@@ -50,10 +53,8 @@ import org.slf4j.LoggerFactory;
  */
 public class InOutProducer extends SjmsProducer {
     
-    private static ConcurrentHashMap<String, Exchanger<Object>> exchangerMap = new ConcurrentHashMap<String, Exchanger<Object>>();
-//    private static final ConcurrentHashMap<String, InOutResponseContainer> responseMap = new ConcurrentHashMap<String, InOutResponseContainer>();
-//	private static final Logger ML_LOGGER = LoggerFactory.getLogger(InternalMessageListener.class);
-//	private ReadWriteLock lock = new ReentrantReadWriteLock();
+    private static Map<String, Exchanger<Object>> exchangerMap = new TreeMap<String, Exchanger<Object>>();
+	private ReadWriteLock lock = new ReentrantReadWriteLock();
     
     /**
      * TODO Add Class documentation for MessageProducerPool
@@ -80,14 +81,14 @@ public class InOutProducer extends SjmsProducer {
             } else {
                 session = conn.createSession(false, Session.AUTO_ACKNOWLEDGE);
             }
-            MessageConsumer messageConsumer = null;
-            if (isTopic()) {
-                messageConsumer = JmsObjectFactory.createTopicConsumer(session, getNamedReplyTo());
-            } else {
-                messageConsumer = JmsObjectFactory.createQueueConsumer(session, getNamedReplyTo());
-            }
             getConnectionResource().returnConnection(conn);
-
+            Destination replyToDestination = null;
+            if (ObjectHelper.isEmpty(getNamedReplyTo())) {
+                replyToDestination = JmsObjectFactory.createTemporaryDestination(session, isTopic());
+            } else {
+            	replyToDestination = JmsObjectFactory.createDestination(session, getNamedReplyTo(), isTopic());
+            }
+            MessageConsumer messageConsumer = JmsObjectFactory.createMessageConsumer(session, replyToDestination, null, isTopic(), null, true);
             messageConsumer.setMessageListener(new MessageListener() {
 
                 @Override
@@ -103,7 +104,7 @@ public class InOutProducer extends SjmsProducer {
                     
                 }
             });
-            MessageConsumerResource mcm = new MessageConsumerResource(session, messageConsumer);
+            MessageConsumerResource mcm = new MessageConsumerResource(session, messageConsumer, replyToDestination);
             return mcm;
         }
         
@@ -132,6 +133,7 @@ public class InOutProducer extends SjmsProducer {
     protected class MessageConsumerResource {
         private final Session session;
         private final MessageConsumer messageConsumer;
+        private final Destination replyToDestination;
 
         /**
          * TODO Add Constructor Javadoc
@@ -139,31 +141,24 @@ public class InOutProducer extends SjmsProducer {
          * @param session
          * @param messageConsumer
          */
-        public MessageConsumerResource(Session session, MessageConsumer messageConsumer) {
+        public MessageConsumerResource(Session session, MessageConsumer messageConsumer, Destination replyToDestination) {
             super();
             this.session = session;
             this.messageConsumer = messageConsumer;
+            this.replyToDestination = replyToDestination;
         }
 
-        /**
-         * Gets the Session value of session for this instance of
-         * MessageConsumerResource.
-         * 
-         * @return the session
-         */
         public Session getSession() {
             return session;
         }
-
-        /**
-         * Gets the MessageConsumer value of queueSender for this instance of
-         * MessageConsumerResource.
-         * 
-         * @return the queueSender
-         */
+        
         public MessageConsumer getMessageConsumer() {
             return messageConsumer;
         }
+
+		public Destination getReplyToDestination() {
+			return replyToDestination;
+		}
     }
 
     protected class InOutResponseContainer {
@@ -221,7 +216,6 @@ public class InOutProducer extends SjmsProducer {
     }
     
     private MessageConsumerPool consumers;
-    boolean useTempDestinations = false;
     
     public InOutProducer(SjmsEndpoint endpoint) {
         super(endpoint);
@@ -234,16 +228,15 @@ public class InOutProducer extends SjmsProducer {
     		if (log.isDebugEnabled()) {
     			log.debug("No reply to destination is defined.  Using temporary destinations.");
     		}
-    		useTempDestinations = true;
     	} else {
     		if (log.isDebugEnabled()) {
     			log.debug("Using {} as the reply to destination.", getNamedReplyTo());
-    		}
-            if (getConsumers() == null) {
-                setConsumers(new MessageConsumerPool(getConsumerCount()));
-                getConsumers().fillPool();
-            }	
+    		}	
     	}
+        if (getConsumers() == null) {
+            setConsumers(new MessageConsumerPool(getConsumerCount()));
+            getConsumers().fillPool();
+        }
         super.doStart();
     }
     
@@ -256,6 +249,7 @@ public class InOutProducer extends SjmsProducer {
         }
     }
     
+    @Override
     public MessageProducerResources doCreateProducerModel() throws Exception {
         Connection conn = getConnectionResource().borrowConnection();
         Session session = null;
@@ -274,6 +268,16 @@ public class InOutProducer extends SjmsProducer {
         return new MessageProducerResources(session, messageProducer);
     }
     
+    /** 
+     * TODO Add override javadoc
+     * TODO time out is actually double as it waits for the producer and then waits for the response.  Use an atomiclong to manage the countdown
+     *
+     * @see org.apache.camel.component.sjms.SjmsProducer#sendMessage(org.apache.camel.Exchange, org.apache.camel.AsyncCallback)
+     *
+     * @param exchange
+     * @param callback
+     * @throws Exception
+     */
     @Override
     public void sendMessage(final Exchange exchange, final AsyncCallback callback) throws Exception {
         if (getProducers() != null) {
@@ -302,46 +306,42 @@ public class InOutProducer extends SjmsProducer {
                 Object responseObject = null;
                 Exchanger<Object> messageExchanger = new Exchanger<Object>();
                 JmsMessageHelper.setCorrelationId(request, correlationId);
-                if (useTempDestinations) {
-                	Destination replyToDestination = JmsObjectFactory.createTemporaryDestination(producer.getSession(), isTopic());
-                    MessageConsumer responseConsumer = JmsObjectFactory.createMessageConsumer(producer.getSession(), replyToDestination, null, isTopic(), null, false);
-                    responseConsumer.setMessageListener(new InternalTempDestinationListener(messageExchanger));
-                    JmsMessageHelper.setJMSReplyTo(request, replyToDestination);
-                    producer.getMessageProducer().send(request);
-                    
-                    try {
-						getProducers().returnObject(producer);
-					} catch (Exception exception) {
-						// thrown if the pool is full. safe to ignore.
-					}
-					
-                    try {
-						responseObject = messageExchanger.exchange(null, getResponseTimeOut(), TimeUnit.MILLISECONDS);
-					} catch (InterruptedException e) {
-						log.debug("Exchanger was interrupted while waiting on response: " + e.getLocalizedMessage(), e);
-						exchange.setException(e);
-					} catch (TimeoutException e) {
-						log.debug("Exchanger timed out while waiting on response: " + e.getLocalizedMessage(), e);
-						exchange.setException(e);
-					} finally {
-						responseConsumer.close();
-					}
-                } else {
-                    exchangerMap.put(request.getJMSCorrelationID(), messageExchanger);
-                    Destination replyToDestination = JmsObjectFactory.createDestination(producer.getSession(), getNamedReplyTo(), isTopic());
-                    JmsMessageHelper.setJMSReplyTo(request, replyToDestination);
-                    
-                    producer.getMessageProducer().send(request);
-                    try {
-						getProducers().returnObject(producer);
-					} catch (Exception exception) {
-						// thrown if the pool is full. safe to ignore.
-					}
-                    responseObject = messageExchanger.exchange(null, getResponseTimeOut(), TimeUnit.MILLISECONDS);
+                try {
+                	lock.writeLock().lock();
+                    exchangerMap.put(correlationId, messageExchanger);
+                } finally {
+                	lock.writeLock().unlock();
                 }
+
+                MessageConsumerResource consumer = consumers.borrowObject(getResponseTimeOut());
+                JmsMessageHelper.setJMSReplyTo(request, consumer.getReplyToDestination());
+                consumers.returnObject(consumer);
+                producer.getMessageProducer().send(request);
+
+                try {
+					getProducers().returnObject(producer);
+				} catch (Exception exception) {
+					// thrown if the pool is full. safe to ignore.
+				}
+				
+                try {
+					responseObject = messageExchanger.exchange(null, getResponseTimeOut(), TimeUnit.MILLISECONDS);
+
+	                try {
+	                	lock.writeLock().lock();
+                        exchangerMap.remove(correlationId);
+	                } finally {
+	                	lock.writeLock().unlock();
+	                }
+				} catch (InterruptedException e) {
+					log.debug("Exchanger was interrupted while waiting on response", e);
+					exchange.setException(e);
+				} catch (TimeoutException e) {
+					log.debug("Exchanger timed out while waiting on response", e);
+					exchange.setException(e);
+				}
                 
                 if (exchange.getException() == null) {
-                    
                     if (responseObject instanceof Throwable) {
                         exchange.setException((Throwable) responseObject);
                     } else if (responseObject instanceof Message) {

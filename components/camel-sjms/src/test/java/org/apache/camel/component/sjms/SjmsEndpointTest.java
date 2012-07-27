@@ -136,7 +136,7 @@ public class SjmsEndpointTest extends CamelTestSupport {
 
     @Test(expected=Exception.class)
     public void testNamedReplyToAndMEPMismatch() throws Exception {
-        context.getEndpoint("sjms:queue:test?namedReplyTo=reply.to.queue&messageExchangePattern=" + ExchangePattern.InOnly);
+        context.getEndpoint("sjms:queue:test?namedReplyTo=reply.to.queue&exchangePattern=" + ExchangePattern.InOnly);
     }
 
     protected CamelContext createCamelContext() throws Exception {

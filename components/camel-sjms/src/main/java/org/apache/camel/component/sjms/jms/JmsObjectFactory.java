@@ -69,6 +69,16 @@ public class JmsObjectFactory {
         return createMessageConsumer(session, destinationName, null, true, null, true);
     }
     
+    public static MessageConsumer createTemporaryMessageConsumer(
+            Session session, 
+            String messageSelector, 
+            boolean topic, 
+            String durableSubscriptionId,
+            boolean noLocal) throws Exception {
+        Destination destination = createTemporaryDestination(session, topic);
+        return createMessageConsumer(session, destination, messageSelector, topic, durableSubscriptionId, noLocal);
+    }
+    
     public static MessageConsumer createMessageConsumer(
             Session session, 
             String destinationName, 

@@ -44,11 +44,20 @@ public class SjmsComponent extends DefaultComponent implements HeaderFilterStrat
     private KeyFormatStrategy keyFormatStrategy;
     private Integer maxConnections = 1;
 
+    /*
+     * @see org.apache.camel.impl.DefaultComponent#createEndpoint(java.lang.String, java.lang.String, java.util.Map)
+     *
+	 * @param uri The value passed into our call to create an endpoint
+     * @param remaining
+     * @param parameters
+     * @return
+     * @throws Exception
+     */
     @Override
     protected Endpoint createEndpoint(String uri, String remaining,
             Map<String, Object> parameters) throws Exception {
         validateMepAndReplyTo(parameters);
-        uri = normalizeSjmsUri(uri);
+        uri = normalizeUri(uri);
         SjmsEndpoint endpoint = new SjmsEndpoint(uri, this);
         setProperties(endpoint, parameters);
         if(endpoint.isTransacted()) {
@@ -58,12 +67,14 @@ public class SjmsComponent extends DefaultComponent implements HeaderFilterStrat
     }
 
 	/**
-	 * Helper method used to 
-	 * @param uri
-	 * @return
+	 * Helper method used to detect the type of endpoint and add the "queue" protocol 
+	 * if it is a default endpoint URI.
+	 * 
+	 * @param uri The value passed into our call to create an endpoint
+	 * @return String
 	 * @throws Exception 
 	 */
-	private String normalizeSjmsUri(String uri) throws Exception {
+	private String normalizeUri(String uri) throws Exception {
 		String tempUri = uri;
         String endpointName = tempUri.substring(0, tempUri.indexOf(":"));
         tempUri = tempUri.substring(endpointName.length());
@@ -87,16 +98,24 @@ public class SjmsComponent extends DefaultComponent implements HeaderFilterStrat
 		return uri;
 	}
     
+    /**
+     * Helper method used to verify that when there is a namedReplyTo value we are 
+     * using the InOut MEP.  If namedReplyTo is defined and the MEP is InOnly the 
+     * endpoint won't be expecting a reply so throw an error to alert the user.
+     * 
+     * @param parameters {@link Endpoint} parameters
+     * @throws Exception throws a {@link CamelException} when MEP equals InOnly and namedReplyTo is defined. 
+     */
     private void validateMepAndReplyTo(Map<String, Object> parameters) throws Exception {
         boolean namedReplyToSet = parameters.containsKey("namedReplyTo");
-        boolean mepSet = parameters.containsKey("messageExchangePattern");
+        boolean mepSet = parameters.containsKey("exchangePattern");
         if (namedReplyToSet && mepSet) {
-            if (! parameters.get("messageExchangePattern").equals(ExchangePattern.InOut.toString())) {
+            if (! parameters.get("exchangePattern").equals(ExchangePattern.InOut.toString())) {
                 String namedReplyTo = (String) parameters.get("namedReplyTo");
-                ExchangePattern mep = ExchangePattern.valueOf((String) parameters.get("messageExchangePattern"));
+                ExchangePattern mep = ExchangePattern.valueOf((String) parameters.get("exchangePattern"));
                 throw new CamelException("Setting parameter namedReplyTo=" 
                         + namedReplyTo 
-                        + " requires a MEP of type InOut or RobustInOut.  Parameter messageExchangePattern is set to " + mep);
+                        + " requires a MEP of type InOut.  Parameter exchangePattern is set to " + mep);
             }
         }
     }

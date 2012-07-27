@@ -17,16 +17,16 @@
 package org.apache.camel.component.sjms.consumer;
 
 import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.TreeMap;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 import javax.jms.Destination;
 import javax.jms.JMSException;
 import javax.jms.Message;
 import javax.jms.MessageProducer;
 import javax.jms.Queue;
-import javax.jms.TemporaryQueue;
-import javax.jms.TemporaryTopic;
 import javax.jms.Topic;
 
 import org.apache.camel.AsyncCallback;
@@ -40,12 +40,14 @@ import org.apache.camel.util.ObjectHelper;
 
 /**
  * TODO Add Class documentation for DefaultMessageHandler
+ * TODO Create a producer cache manager to store and purge unused cashed producers or we will have a memory leak
  * 
  * @author sully6768
  */
 public class InOutMessageHandler extends DefaultMessageHandler {
 	
-	private Map<String, MessageProducer> producerCache = new ConcurrentHashMap<String, MessageProducer>();
+	private Map<String, MessageProducer> producerCache = new TreeMap<String, MessageProducer>();
+	private ReadWriteLock lock = new ReentrantReadWriteLock();
 
     /**
      * TODO Add Constructor Javadoc
@@ -75,7 +77,7 @@ public class InOutMessageHandler extends DefaultMessageHandler {
         try {
             MessageProducer messageProducer = null;
     		Object obj = exchange.getIn().getHeader("JMSReplyTo");
-            if (obj != null){
+            if (obj != null) {
 				Destination replyTo = null;
 				if (isDestination(obj)) {
 					replyTo = (Destination) obj;
@@ -85,23 +87,29 @@ public class InOutMessageHandler extends DefaultMessageHandler {
 					throw new Exception(
 							"The value of JMSReplyTo must be a valid Destination or String.  Value provided: " + obj);
 				}
-				if (isTemporaryDestination(replyTo)) {
-					messageProducer = getSession().createProducer(replyTo);
-				} else {
-					String destinationName = getDestinationName(replyTo);
+
+				String destinationName = getDestinationName(replyTo);
+				try {
+					lock.readLock().lock();
 					if (producerCache.containsKey(destinationName)) {
 						messageProducer = producerCache.get(destinationName);
-					} else {
+					}
+				} finally {
+					lock.readLock().unlock();
+				}
+				if (messageProducer == null) {
+					try {
+						lock.writeLock().lock();
 						messageProducer = getSession()
-								.createProducer(replyTo);
+							.createProducer(replyTo);
 						producerCache.put(destinationName, messageProducer);
+					} finally {
+						lock.writeLock().unlock();
 					}
 				}
             }
-        	
             
-            MessageHanderAsyncCallback callback = new MessageHanderAsyncCallback(
-                    exchange, messageProducer);
+            MessageHanderAsyncCallback callback = new MessageHanderAsyncCallback(exchange, messageProducer);
             if (exchange.isFailed()) {
                 return;
             } else {
@@ -123,8 +131,7 @@ public class InOutMessageHandler extends DefaultMessageHandler {
                     if (log.isDebugEnabled()) {
                         log.debug("Aynchronous processing: Message[{}], Destination[{}] ", exchange.getIn().getBody(), this.getEndpoint().getEndpointUri());
                     }
-                    boolean sync = AsyncProcessorHelper.process(getProcessor(),
-                            exchange, callback);
+                    boolean sync = AsyncProcessorHelper.process(getProcessor(), exchange, callback);
                     if (!sync) {
                         // will be done async so return now
                         return;
@@ -156,10 +163,6 @@ public class InOutMessageHandler extends DefaultMessageHandler {
     
     private boolean isDestination(Object object) {
     	return (object instanceof Destination);
-    }
-    
-    private boolean isTemporaryDestination(Destination destination) {
-    	return (destination instanceof TemporaryQueue || destination instanceof TemporaryTopic);
     }
     
     private String getDestinationName(Destination destination) throws Exception {

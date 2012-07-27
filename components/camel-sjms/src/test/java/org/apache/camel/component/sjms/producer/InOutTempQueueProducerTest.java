@@ -34,24 +34,20 @@ import org.junit.Test;
 
 public class InOutTempQueueProducerTest extends JmsTestSupport {
     
-    private static final String TEST_DESTINATION_NAME = "in.out.queue.producer.test";
-    
-    public InOutTempQueueProducerTest() {
-	}
-    
     @Override
     protected boolean useJmx() {
-    	return false;
+    	return true;
     }
 
     @Test
     public void testInOutQueueProducer() throws Exception {
-        MessageConsumer mc = JmsObjectFactory.createQueueConsumer(getSession(), "in.out.queue.producer.test.request");
+    	String queueName = "in.out.queue.producer.test.request";
+        MessageConsumer mc = JmsObjectFactory.createQueueConsumer(getSession(), queueName);
         assertNotNull(mc);
         final String requestText = "Hello World!";
         final String responseText = "How are you";
         mc.setMessageListener(new MyMessageListener(requestText, responseText));
-        Object responseObject = template.requestBody("sjms:queue:in.out.queue.producer.test.request?exchangePattern=InOut", requestText);
+        Object responseObject = template.requestBody("sjms:queue:"+queueName+"?exchangePattern=InOut", requestText);
         assertNotNull(responseObject);
         assertTrue(responseObject instanceof String);
         assertEquals(responseText, responseObject);
@@ -61,13 +57,14 @@ public class InOutTempQueueProducerTest extends JmsTestSupport {
 
     @Test
     public void testInOutQueueProducerWithCorrelationId() throws Exception {
-        MessageConsumer mc = JmsObjectFactory.createQueueConsumer(getSession(), "in.out.queue.producer.test.request");
+    	String queueName = "in.out.queue.producer.test.request";
+        MessageConsumer mc = JmsObjectFactory.createQueueConsumer(getSession(), queueName);
         assertNotNull(mc);
         final String requestText = "Hello World!";
         final String responseText = "How are you";
         mc.setMessageListener(new MyMessageListener(requestText, responseText));
         final String correlationId = UUID.randomUUID().toString().replace("-", "");
-        Exchange exchange = template.request("sjms:queue:in.out.queue.producer.test.request?exchangePattern=InOut", new Processor() {
+        Exchange exchange = template.request("sjms:queue:"+queueName+"?exchangePattern=InOut", new Processor() {
             
             @Override
             public void process(Exchange exchange) throws Exception {
@@ -82,24 +79,6 @@ public class InOutTempQueueProducerTest extends JmsTestSupport {
         mc.close();
 
     }
-
-//    /*
-//     * @see org.apache.camel.test.junit4.CamelTestSupport#createRouteBuilder()
-//     *
-//     * @return
-//     * @throws Exception
-//     */
-//    @Override
-//    protected RouteBuilder createRouteBuilder() throws Exception {
-//        return new RouteBuilder() {
-//            public void configure() {
-//                from("direct:start")
-//                    .to("log:" + TEST_DESTINATION_NAME + ".in.log.1?showBody=true")
-//                    .to("sjms:queue:" + TEST_DESTINATION_NAME + ".request?exchangePattern=InOut")
-//                    .to("log:" + TEST_DESTINATION_NAME + ".out.log.1?showBody=true");
-//            }
-//        };
-//    }
     
     protected class MyMessageListener implements MessageListener {
         private String requestText;
