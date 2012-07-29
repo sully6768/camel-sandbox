@@ -93,13 +93,13 @@ public abstract class DefaultMessageHandler implements MessageListener {
                 if (isTransacted() || isSynchronous()) {
                     if (log.isDebugEnabled()) {
                         log.debug(
-                        		"  Sending message asynchronously: {}", exchange.getIn().getBody());
+                        		"  Handling synchronous message: {}", exchange.getIn().getBody());
                     }
                     doHandleMessage(exchange);
                 } else {
                     if (log.isDebugEnabled()) {
                         log.debug(
-                                "  Sending message asynchronously: {}", exchange.getIn().getBody());
+                                "  Handling asynchronous message: {}", exchange.getIn().getBody());
                     }
                     executor.execute(new Runnable() {
                         @Override
