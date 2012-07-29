@@ -28,7 +28,7 @@
         <version>2.11-SNAPSHOT</version>
     </parent>
 
-    <artifactId>camel-simple-jms</artifactId>
+    <artifactId>camel-sjms</artifactId>
     <packaging>bundle</packaging>
     <name>Camel :: Simple JMS</name>
     <description>A pure Java JMS Camel Component</description>
