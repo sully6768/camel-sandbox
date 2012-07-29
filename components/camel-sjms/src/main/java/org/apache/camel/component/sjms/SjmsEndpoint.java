@@ -53,8 +53,9 @@ public class SjmsEndpoint extends DefaultEndpoint implements MultipleConsumersSu
     private int consumerCount = 1;
     private long ttl = -1;
     private boolean persistent = true;
-    private String durableSubscription;
+    private String durableSubscriptionId;
     private long responseTimeOut = 5000;
+    private String messageSelector;
     
 
     public SjmsEndpoint() {
@@ -227,12 +228,12 @@ public class SjmsEndpoint extends DefaultEndpoint implements MultipleConsumersSu
         this.persistent = persistent;
     }
 
-    public String getDurableSubscription() {
-        return durableSubscription;
+    public String getDurableSubscriptionId() {
+        return durableSubscriptionId;
     }
 
-    public void setDurableSubscription(String durableSubscription) {
-        this.durableSubscription = durableSubscription;
+    public void setDurableSubscriptionId(String durableSubscription) {
+        this.durableSubscriptionId = durableSubscription;
     }
 
     public int getSessionCount() {
@@ -249,5 +250,13 @@ public class SjmsEndpoint extends DefaultEndpoint implements MultipleConsumersSu
 
 	public long getResponseTimeOut() {
 		return responseTimeOut;
+	}
+
+	public void setMessageSelector(String messageSelector) {
+		this.messageSelector = messageSelector;
+	}
+
+	public String getMessageSelector() {
+		return messageSelector;
 	}
 }

@@ -32,6 +32,17 @@ import org.apache.camel.impl.DefaultConsumer;
 public class SjmsConsumer extends DefaultConsumer {
 
 
+    /**
+     * @return
+     */
+    protected String createId() {
+        String answer = null;
+        SecureRandom ng = new SecureRandom();
+        UUID uuid = new UUID(ng.nextLong(), ng.nextLong());
+        answer = uuid.toString();
+        return answer;
+    }
+
     public SjmsConsumer(Endpoint endpoint, Processor processor) {
         super(endpoint, processor);
     }
@@ -68,14 +79,11 @@ public class SjmsConsumer extends DefaultConsumer {
         return getSjmsEndpoint().isTopic();
     }
 
-    /**
-     * @return
-     */
-    protected String createId() {
-        String answer = null;
-        SecureRandom ng = new SecureRandom();
-        UUID uuid = new UUID(ng.nextLong(), ng.nextLong());
-        answer = uuid.toString();
-        return answer;
-    }
+	public String getMessageSelector() {
+		return getSjmsEndpoint().getMessageSelector();
+	}
+
+	public String getDurableSubscriptionId() {
+		return getSjmsEndpoint().getDurableSubscriptionId();
+	}
 }

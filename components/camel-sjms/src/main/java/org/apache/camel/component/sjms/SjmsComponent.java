@@ -131,6 +131,8 @@ public class SjmsComponent extends DefaultComponent implements HeaderFilterStrat
             DefaultConnectionResource connections = new DefaultConnectionResource(getMaxConnections(), getConnectionFactory());
             connections.fillPool();
             setConnectionResource(connections);
+        } else if (getConnectionResource() instanceof DefaultConnectionResource) {
+            ((DefaultConnectionResource)getConnectionResource()).fillPool();
         }
     }
 

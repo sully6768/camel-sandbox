@@ -30,7 +30,17 @@ public class DefaultConnectionResource extends ObjectPool<Connection> implements
     private ConnectionFactory connectionFactory;
     private String username;
     private String password;
-    private String clientId;
+    private String connectionId;
+
+    /**
+     * TODO Add Constructor Javadoc
+     * 
+     * @param poolSize
+     * @param connectionFactory
+     */
+    public DefaultConnectionResource() {
+    	super();
+    }
 
     /**
      * TODO Add Constructor Javadoc
@@ -55,6 +65,22 @@ public class DefaultConnectionResource extends ObjectPool<Connection> implements
         this.connectionFactory = connectionFactory;
         this.username = username;
         this.password = password;
+    }
+
+    /**
+     * TODO Add Constructor Javadoc
+     * 
+     * @param poolSize
+     * @param connectionFactory
+     * @param username
+     * @param password
+     */
+    public DefaultConnectionResource(int poolSize, ConnectionFactory connectionFactory, String username, String password, String connectionId) {
+        super(poolSize);
+        this.connectionFactory = connectionFactory;
+        this.username = username;
+        this.password = password;
+        this.connectionId = connectionId;
     }
     
     @Override
@@ -83,8 +109,8 @@ public class DefaultConnectionResource extends ObjectPool<Connection> implements
             }
         }
         if(connection != null) {
-            if(ObjectHelper.isNotEmpty(getClientId()))
-                connection.setClientID(getClientId());
+            if(ObjectHelper.isNotEmpty(getConnectionId()))
+                connection.setClientID(getConnectionId());
             connection.start();
         }
         return connection;
@@ -99,60 +125,35 @@ public class DefaultConnectionResource extends ObjectPool<Connection> implements
     	
     }
 
-    /**
-     * Sets the ConnectionFactory value of connectionFactory for this instance
-     * of DefaultConnectionResource.
-     * 
-     * @param connectionFactory
-     *            Sets ConnectionFactory, default is null
-     */
-    public void setConnectionFactory(ConnectionFactory connectionFactory) {
-        this.connectionFactory = connectionFactory;
-    }
+	public ConnectionFactory getConnectionFactory() {
+		return connectionFactory;
+	}
 
-    /**
-     * Gets the ConnectionFactory value of connectionFactory for this instance
-     * of DefaultConnectionResource.
-     * 
-     * @return the connectionFactory
-     */
-    public ConnectionFactory getConnectionFactory() {
-        return connectionFactory;
-    }
+	public void setConnectionFactory(ConnectionFactory connectionFactory) {
+		this.connectionFactory = connectionFactory;
+	}
 
-    /**
-     * Gets the String value of username for this instance of DefaultConnectionResource.
-     *
-     * @return the username
-     */
-    public String getUsername() {
-        return username;
-    }
+	public String getUsername() {
+		return username;
+	}
 
-    /**
-     * Gets the String value of password for this instance of DefaultConnectionResource.
-     *
-     * @return the password
-     */
-    public String getPassword() {
-        return password;
-    }
+	public void setUsername(String username) {
+		this.username = username;
+	}
 
-    /**
-     * Sets the String value of clientId for this instance of DefaultConnectionResource.
-     *
-     * @param clientId Sets String, default is TODO add default
-     */
-    public void setClientId(String clientId) {
-        this.clientId = clientId;
-    }
+	public String getPassword() {
+		return password;
+	}
 
-    /**
-     * Gets the String value of clientId for this instance of DefaultConnectionResource.
-     *
-     * @return the clientId
-     */
-    public String getClientId() {
-        return clientId;
-    }
+	public void setPassword(String password) {
+		this.password = password;
+	}
+
+	public String getConnectionId() {
+		return connectionId;
+	}
+
+	public void setConnectionId(String connectionId) {
+		this.connectionId = connectionId;
+	}
 }
