@@ -101,7 +101,7 @@ public class InOnlyMessageHandler extends DefaultMessageHandler {
 
         @Override
         public void done(boolean sync) {
-        	log.debug("Asynchronous InOnly Exchange complete");
+        	log.debug("NoOpAsyncCallback InOnly Exchange complete");
         }
     }
 }
