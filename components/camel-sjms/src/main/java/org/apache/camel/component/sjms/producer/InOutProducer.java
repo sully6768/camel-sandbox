@@ -19,6 +19,7 @@ package org.apache.camel.component.sjms.producer;
 import java.util.Map;
 import java.util.TreeMap;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Exchanger;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -50,16 +51,28 @@ import org.slf4j.LoggerFactory;
 /**
  * TODO Add Class documentation for InOutProducer
  *
+ * @author sully6768
  */
 public class InOutProducer extends SjmsProducer {
-    
-    private static Map<String, Exchanger<Object>> exchangerMap = new TreeMap<String, Exchanger<Object>>();
+
+	
+	/**
+	 * We use the {@link ReadWriteLock} to manage the  {@link TreeMap} 
+	 * in place of a {@link ConcurrentMap} because due to significant performance
+	 * gains.
+	 * 
+	 * TODO Externalize the Exchanger Map to a store object
+	 */
 	private ReadWriteLock lock = new ReentrantReadWriteLock();
+    private static Map<String, Exchanger<Object>> exchangerMap = new TreeMap<String, Exchanger<Object>>();
     
     /**
+     * A pool of {@link MessageConsumerResource} objects that are the
+     * reply consumers.
+     * 
      * TODO Add Class documentation for MessageProducerPool
+     * TODO Externalize
      *
-     * @author sully6768
      */
     protected class MessageConsumerPool extends ObjectPool<MessageConsumerResource>{
 
