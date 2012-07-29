@@ -180,11 +180,9 @@ public class DefaultConsumer extends SjmsConsumer {
         }
         MessageConsumer messageConsumer = null;
         if (isTopic()) {
-            messageConsumer = JmsObjectFactory.createTopicConsumer(session,
-                    getDestinationName());
+            messageConsumer = JmsObjectFactory.createTopicConsumer(session, getDestinationName(), getMessageSelector());
         } else {
-            messageConsumer = JmsObjectFactory.createQueueConsumer(session,
-                    getDestinationName());
+            messageConsumer = JmsObjectFactory.createQueueConsumer(session, getDestinationName(), getMessageSelector());
         }
         MessageListener handler = createMessageHandler(session);
         messageConsumer.setMessageListener(handler);
@@ -196,11 +194,9 @@ public class DefaultConsumer extends SjmsConsumer {
         Session queueSession = getSessionPool().borrowObject();
         MessageConsumer messageConsumer = null;
         if (isTopic()) {
-            messageConsumer = JmsObjectFactory.createTopicConsumer(
-                    queueSession, getDestinationName());
+            messageConsumer = JmsObjectFactory.createTopicConsumer(queueSession, getDestinationName(), getMessageSelector());
         } else {
-            messageConsumer = JmsObjectFactory.createQueueConsumer(
-                    queueSession, getDestinationName());
+            messageConsumer = JmsObjectFactory.createQueueConsumer(queueSession, getDestinationName(), getMessageSelector());
         }
         getSessionPool().returnObject(queueSession);
         // Don't pass in the session. Only needed if we are transacted
