@@ -51,6 +51,7 @@ public class JmsTestSupport extends CamelTestSupport {
         broker = new BrokerService();
         broker.setUseJmx(true);
         broker.setPersistent(false);
+        broker.deleteAllMessages();
         broker.addConnector(BROKER_URI);
         broker.start();
         super.setUp();
