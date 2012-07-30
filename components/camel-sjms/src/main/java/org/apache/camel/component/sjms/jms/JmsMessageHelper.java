@@ -43,6 +43,7 @@ import javax.jms.TextMessage;
 import org.apache.camel.Endpoint;
 import org.apache.camel.Exchange;
 import org.apache.camel.RuntimeCamelException;
+import org.apache.camel.component.sjms.DefaultJmsKeyFormatStrategy;
 import org.apache.camel.component.sjms.IllegalHeaderException;
 import org.apache.camel.impl.DefaultMessage;
 import org.apache.camel.util.ExchangeHelper;
@@ -364,7 +365,7 @@ public final class JmsMessageHelper {
     
 
     public static Message setJmsMessageHeaders(final Exchange exchange, final Message jmsMessage) throws Exception {
-        Map<String, Object> headers = exchange.getIn().getHeaders();
+        Map<String, Object> headers = new HashMap<String, Object>(exchange.getIn().getHeaders());
         Set<String> keys = headers.keySet();
         for (String headerName : keys) {
             Object headerValue = headers.get(headerName);
@@ -396,6 +397,22 @@ public final class JmsMessageHelper {
                 // JMSMessageID, JMSTimestamp, JMSRedelivered
                 // log at trace level to not spam log
                 LOGGER.trace("Ignoring JMS header: {} with value: {}", headerName, headerValue);
+                if (headerName.equalsIgnoreCase("JMSDestination") ||
+                		headerName.equalsIgnoreCase("JMSMessageID") ||
+                		headerName.equalsIgnoreCase("JMSTimestamp") ||
+                		headerName.equalsIgnoreCase("JMSRedelivered")) {
+                    // The following properties are set by the MessageProducer:
+                    // JMSDestination
+                    // The following are set on the underlying JMS provider:
+                    // JMSMessageID, JMSTimestamp, JMSRedelivered
+                    // log at trace level to not spam log
+                    LOGGER.trace("Ignoring JMS header: {} with value: {}", headerName, headerValue);
+                } else {
+                	if (! (headerValue instanceof JmsMessageType) ) {
+                    	String encodedName = new DefaultJmsKeyFormatStrategy().encodeKey(headerName);
+                    	JmsMessageHelper.setProperty(jmsMessage, encodedName, headerValue);
+                	}
+                }
             }            
         }
         return jmsMessage;

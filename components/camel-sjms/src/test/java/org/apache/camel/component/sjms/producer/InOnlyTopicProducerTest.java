@@ -41,7 +41,7 @@ public class InOnlyTopicProducerTest extends JmsTestSupport {
 
     @Test
     public void testInOnlyTopicProducerProducer() throws Exception {
-        MessageConsumer mc = JmsObjectFactory.createTopicConsumer(getSession(), TEST_DESTINATION_NAME);
+        MessageConsumer mc = JmsObjectFactory.createTopicConsumer(getSession(), TEST_DESTINATION_NAME, null);
         assertNotNull(mc);
         final String expectedBody = "Hello World!";
         MockEndpoint mock = getMockEndpoint("mock:result");

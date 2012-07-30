@@ -65,8 +65,8 @@ public class JmsObjectFactory {
         return createMessageConsumer(session, destinationName, messageSelector, false, null, true);
     }
 
-    public static MessageConsumer createTopicConsumer(Session session, String destinationName) throws Exception {
-        return createMessageConsumer(session, destinationName, null, true, null, true);
+    public static MessageConsumer createTopicConsumer(Session session, String destinationName, String messageSelector) throws Exception {
+        return createMessageConsumer(session, destinationName, messageSelector, true, null, true);
     }
     
     public static MessageConsumer createTemporaryMessageConsumer(
@@ -132,7 +132,7 @@ public class JmsObjectFactory {
         	}
         } else {
             if (ObjectHelper.isNotEmpty(messageSelector)) {
-                messageConsumer = session.createConsumer(destination, messageSelector, noLocal); 
+                messageConsumer = session.createConsumer(destination, messageSelector); 
             } else {
                 messageConsumer = session.createConsumer(destination);
             }
@@ -161,9 +161,14 @@ public class JmsObjectFactory {
         MessageProducer messageProducer = null;
         Destination destination = null;
         if (topic) {
+        	if (destinationName.startsWith("topic://")) {
+        		destinationName = destinationName.substring("topic://".length());
+        	}
             destination = session.createTopic(destinationName);
-            
         } else {
+        	if (destinationName.startsWith("queue://")) {
+        		destinationName = destinationName.substring("queue://".length());
+        	}
             destination = session.createQueue(destinationName);
         }
         messageProducer = session.createProducer(destination);
