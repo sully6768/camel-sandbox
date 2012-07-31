@@ -73,12 +73,6 @@
             <artifactId>geronimo-jms_1.1_spec</artifactId>
             <version>1.1.1</version>
         </dependency>
-        <dependency>
-            <groupId>org.apache.geronimo.specs</groupId>
-            <artifactId>geronimo-j2ee_1.4_spec</artifactId>
-            <version>1.1</version>
-            <optional>true</optional>
-        </dependency>
 
     <!-- for testing -->
         <dependency>
